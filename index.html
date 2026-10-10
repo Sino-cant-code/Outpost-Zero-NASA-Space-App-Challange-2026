@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Outpost Zero | Solo survival trainer</title>
+<meta name="description" content="A 2D survival game that trains junior astronauts to keep a lone outpost alive on Mars or the Moon.">
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<div id="app">
+
+  <header class="topbar">
+    <div class="brand">
+      <span class="logo" aria-hidden="true">&#10022;</span>
+      <div><b>Outpost Zero</b><small>Solo survival trainer for junior astronauts</small></div>
+    </div>
+    <div class="top-actions">
+      <button id="btnMusic" class="ghost">Music: on</button>
+      <button id="btnSound" class="ghost">Sound: on</button>
+      <button id="btnSrc" class="ghost">NASA sources</button>
+      <button id="btnHelp" class="ghost">How to play</button>
+    </div>
+  </header>
+
+  <!-- Start screen -->
+  <main id="menu">
+    <section class="hero">
+      <h1>You are the last one at the outpost.</h1>
+      <p class="lead">Walk the base, fix what breaks and look after air, water, food and power. Every job costs time. Stay safe for two weeks.</p>
+    </section>
+
+    <section id="cards" class="cards"></section>
+
+    <p class="foot">Educational prototype. Facts are simplified from public NASA information (tap NASA sources). Not official mission guidance. Not a NASA product.</p>
+  </main>
+
+  <!-- Game screen -->
+  <main id="game" hidden>
+    <section class="statusbar">
+      <div class="when">
+        <div class="dayline"><strong id="sbDay"></strong><span id="sbLeft"></span></div>
+        <div class="clock"><b id="clockTxt">07:00</b><div class="cbar"><i id="clockFill"></i></div></div>
+        <span id="zoneBadge" class="badge">Inside</span>
+      </div>
+      <div id="meters" class="meters"></div>
+    </section>
+
+    <section class="stage">
+      <div id="viewport" class="viewport">
+        <canvas id="cv" width="1100" height="540" aria-label="Outpost view"></canvas>
+        <div id="prompt" class="prompt" hidden></div>
+        <div id="work" class="work" hidden><span id="workLabel"></span><div class="wbar"><i id="workFill"></i></div></div>
+        <div class="touch">
+          <button id="tl" aria-label="Walk left">&#9664;</button>
+          <button id="te" aria-label="Interact">E</button>
+          <button id="tr" aria-label="Walk right">&#9654;</button>
+        </div>
+        <div id="mini" class="mini" aria-hidden="true"></div>
+      </div>
+
+      <aside class="side">
+        <section class="box mc">
+          <h3>Mission Control</h3>
+          <p id="mc"></p>
+          <button id="btnWhy" class="why" hidden></button>
+          <p class="next"><b>Next step:</b> <span id="objective"></span></p>
+          <p class="fc"><b>Forecast:</b> <span id="forecast"></span></p>
+        </section>
+        <section class="box">
+          <h3 id="stTitle">No station nearby</h3>
+          <div id="tasks"></div>
+        </section>
+        <section class="box">
+          <h3>Systems</h3>
+          <div id="chips" class="chips"></div>
+        </section>
+        <section class="box">
+          <h3>Mission log</h3>
+          <div id="log" class="log"></div>
+          <div class="row"><button id="btnRestart" class="ghost">Restart</button><button id="btnMenu" class="ghost">Main menu</button></div>
+        </section>
+      </aside>
+    </section>
+  </main>
+</div>
+
+<div id="modal" class="overlay" hidden>
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="mTitle">
+    <h2 id="mTitle"></h2>
+    <div id="mBody"></div>
+    <div id="mBtns" class="mbtns"></div>
+  </div>
+</div>
+<div id="toast" class="toast" hidden></div>
+
+<script src="js/data.js"></script>
+<script src="js/audio.js"></script>
+<script src="js/render.js"></script>
+<script src="js/game.js"></script>
+</body>
+</html>
