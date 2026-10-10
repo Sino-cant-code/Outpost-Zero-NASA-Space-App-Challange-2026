@@ -1,0 +1,1811 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Odyssey Outpost | Solo survival trainer</title>
+<meta name="description" content="A 2D survival game that trains junior astronauts to keep a lone outpost alive on Mars or the Moon.">
+<style>
+/* Odyssey Outpost styles
+   Palette: graphite, amber for actions, teal for telemetry, coral for alerts. */
+:root {
+  --bg: #02040d;
+  --panel: #0a1431;
+  --panel2: #10214d;
+  --line: #2b4b94;
+  --text: #e9eef2;
+  --muted: #9fb4dc;
+  --amber: #f2b04a;
+  --teal: #5fe3ff;
+  --coral: #ef6a5a;
+  --ok: #6fe3a1;
+  --warn: #ffcf5a;
+  --bad: #ff6b6b;
+}
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+html, body { margin: 0; min-height: 100%; }
+body {
+  background: radial-gradient(ellipse at 50% -20%, #12297a 0%, var(--bg) 55%) fixed;
+  color: var(--text);
+  font: 15px/1.5 "Segoe UI", Roboto, system-ui, -apple-system, sans-serif;
+}
+button { font: inherit; color: inherit; cursor: pointer; }
+button:focus-visible { outline: 2px solid var(--amber); outline-offset: 2px; }
+h1, h2, h3 { margin: 0; font-family: Bahnschrift, "Trebuchet MS", "Segoe UI", system-ui, sans-serif; letter-spacing: 0.01em; }
+p { margin: 0 0 10px; }
+.muted { color: var(--muted); }
+
+#app { max-width: 1500px; margin: 0 auto; padding: 14px 16px 30px; }
+.topbar { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 16px; }
+.brand { display: flex; gap: 12px; align-items: center; }
+.logo { font-size: 28px; color: var(--amber); }
+.brand b { display: block; font-family: Bahnschrift, "Trebuchet MS", system-ui, sans-serif; font-size: 20px; letter-spacing: 0.08em; }
+.brand small { color: var(--muted); font-size: 12px; }
+.top-actions { display: flex; gap: 8px; }
+.ghost { background: transparent; border: 1px solid var(--line); border-radius: 10px; padding: 8px 12px; font-size: 13px; }
+.ghost:hover { border-color: var(--teal); }
+.primary { background: var(--amber); color: #1b1305; border: 0; border-radius: 12px; padding: 12px 16px; font-weight: 700; box-shadow: 0 3px 0 #a56f1c; }
+.primary:hover { filter: brightness(1.08); }
+.primary:active { transform: translateY(2px); box-shadow: 0 1px 0 #a56f1c; }
+
+/* start screen */
+.hero { max-width: 760px; margin: 18px 0 26px; }
+.hero h1 { font-size: clamp(32px, 5vw, 56px); line-height: 1.05; margin-bottom: 14px; }
+.lead { font-size: 17px; color: #c8d3dd; max-width: 62ch; }
+.cards { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
+.card { display: grid; grid-template-columns: 150px 1fr; background: var(--panel); border: 1px solid var(--line); border-radius: 18px; overflow: hidden; }
+.card .art { position: relative; min-height: 220px; }
+.card .art i { position: absolute; left: 50%; top: 50%; width: 110px; height: 110px; margin: -55px 0 0 -55px; border-radius: 50%; }
+.card.mars .art { background: linear-gradient(#3a2230, #8a4f4c 80%); }
+.card.mars .art i { background: radial-gradient(circle at 35% 30%, #f0a37d, #c0654d 55%, #6d3a37); box-shadow: 0 0 40px #e87a5a55; }
+.card.moon .art { background: linear-gradient(#05070f, #1a2233 85%); }
+.card.moon .art i { background: radial-gradient(circle at 35% 30%, #f1f4f8, #aab3c2 55%, #5b6272); box-shadow: 0 0 40px #9fb7ff33; }
+.card-body { padding: 20px; display: flex; flex-direction: column; gap: 8px; }
+.card h2 { font-size: 24px; }
+.card p { color: #c0ccd8; }
+.facts { list-style: none; margin: 0 0 8px; padding: 0; display: grid; gap: 4px; color: var(--muted); font-size: 13px; }
+.facts li::before { content: "+ "; color: var(--teal); }
+.card .primary { margin-top: auto; }
+.foot { color: var(--muted); font-size: 12px; margin-top: 20px; }
+
+/* status bar */
+.statusbar { display: grid; grid-template-columns: 300px 1fr; gap: 12px; background: var(--panel); border: 1px solid var(--line); border-radius: 16px; padding: 12px; margin-bottom: 12px; align-items: center; }
+.when { display: grid; gap: 6px; }
+.dayline strong { font-family: Bahnschrift, "Trebuchet MS", system-ui, sans-serif; font-size: 22px; display: block; line-height: 1.1; }
+.dayline span { color: var(--amber); font-size: 13px; }
+.clock { display: flex; align-items: center; gap: 10px; }
+.clock b { font-variant-numeric: tabular-nums; font-size: 18px; }
+.cbar { flex: 1; height: 6px; background: #0b1016; border-radius: 6px; overflow: hidden; }
+.cbar i { display: block; height: 100%; width: 0; background: var(--teal); transition: width 0.2s; }
+.badge { justify-self: start; font-size: 12px; padding: 3px 10px; border: 1px solid var(--line); border-radius: 99px; color: var(--muted); }
+.badge.eva { color: #1b1305; background: var(--amber); border-color: var(--amber); font-weight: 700; }
+.meters { display: grid; grid-template-columns: repeat(6, 1fr); gap: 8px; }
+.meter { background: #0f161d; border: 1px solid var(--line); border-radius: 12px; padding: 8px 10px; }
+.mrow { display: flex; justify-content: space-between; font-size: 12px; color: var(--muted); margin-bottom: 5px; }
+.mrow b { color: var(--text); font-variant-numeric: tabular-nums; }
+.bar { height: 7px; background: #0b1016; border-radius: 6px; overflow: hidden; }
+.bar i { display: block; height: 100%; width: 0; transition: width 0.3s; }
+.meter small { display: block; margin-top: 4px; font-size: 11px; color: var(--muted); min-height: 15px; }
+
+/* stage */
+.stage { display: grid; grid-template-columns: minmax(0, 1fr) 360px; gap: 12px; align-items: start; }
+.viewport { position: relative; border-radius: 18px; overflow: hidden; border: 1px solid var(--line); background: #000; }
+canvas { width: 100%; height: auto; display: block; }
+.viewport.flash::after { content: ""; position: absolute; inset: 0; pointer-events: none; background: radial-gradient(circle, transparent 40%, rgba(239, 70, 60, 0.4)); animation: flash 1.2s ease-out forwards; }
+@keyframes flash { from { opacity: 1; } to { opacity: 0; } }
+.prompt { position: absolute; left: 12px; bottom: 44px; background: rgba(10, 15, 20, 0.85); border: 1px solid var(--line); border-radius: 10px; padding: 6px 12px; font-size: 14px; }
+.prompt b { display: inline-block; background: var(--amber); color: #1b1305; border-radius: 5px; padding: 0 7px; margin-right: 6px; }
+.work { position: absolute; left: 50%; bottom: 52px; transform: translateX(-50%); min-width: 260px; background: rgba(10, 15, 20, 0.9); border: 1px solid var(--amber); border-radius: 12px; padding: 8px 14px; text-align: center; font-size: 14px; }
+.wbar { height: 6px; background: #0b1016; border-radius: 6px; margin-top: 6px; overflow: hidden; }
+.wbar i { display: block; height: 100%; width: 0; background: var(--amber); }
+.mini { position: absolute; left: 12px; right: 12px; bottom: 10px; height: 18px; background: rgba(10, 15, 20, 0.7); border: 1px solid var(--line); border-radius: 9px; }
+.mini .hab { position: absolute; top: 3px; bottom: 3px; right: 3px; background: #31404f; border-radius: 6px; }
+.mini .dot { position: absolute; top: 6px; width: 6px; height: 6px; margin-left: -3px; border-radius: 50%; background: var(--teal); }
+.mini .dot.in { background: #8fb4ff; }
+.mini .me { position: absolute; top: 2px; width: 4px; height: 12px; margin-left: -2px; border-radius: 2px; background: var(--amber); }
+.touch { display: none; position: absolute; right: 10px; top: 10px; gap: 8px; }
+.touch button { width: 54px; height: 54px; border-radius: 14px; background: rgba(10, 15, 20, 0.8); border: 1px solid var(--line); font-size: 18px; touch-action: none; }
+@media (pointer: coarse) { .touch { display: flex; } }
+
+/* side panels */
+.side { display: grid; gap: 10px; }
+.box { background: var(--panel); border: 1px solid var(--line); border-radius: 16px; padding: 14px; }
+.box h3 { font-size: 16px; margin-bottom: 8px; }
+.mc p { font-size: 14px; }
+#mc { color: #d6e0e8; min-height: 40px; }
+.next { color: var(--amber); }
+.fc { color: var(--muted); font-size: 13px; margin: 0; }
+.task { display: flex; gap: 10px; width: 100%; text-align: left; background: var(--panel2); border: 1px solid var(--line); border-radius: 12px; padding: 10px; margin-bottom: 8px; }
+.task:hover { border-color: var(--amber); }
+.task.off { opacity: 0.55; }
+.task .k { flex: none; width: 24px; height: 24px; border-radius: 6px; background: #0f161d; border: 1px solid var(--line); display: grid; place-items: center; font-size: 12px; color: var(--amber); }
+.task .tt { display: grid; gap: 2px; }
+.task em { font-style: normal; color: var(--muted); font-size: 12px; }
+.task small { color: var(--teal); font-size: 12px; }
+.task.off small { color: var(--coral); }
+.chips { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+.chip { display: flex; flex-direction: column; background: #0f161d; border: 1px solid var(--line); border-radius: 10px; padding: 6px 8px; font-size: 12px; }
+.chip span { color: var(--muted); }
+.chip b.ok { color: var(--ok); }
+.chip b.warn { color: var(--warn); }
+.chip b.bad { color: var(--bad); }
+.log { max-height: 170px; overflow: auto; font-size: 12px; color: var(--muted); display: grid; gap: 4px; }
+.log div { padding-bottom: 4px; border-bottom: 1px solid #202c38; }
+.log span { color: var(--teal); }
+.row { display: flex; gap: 8px; margin-top: 10px; }
+
+/* modal */
+.overlay { position: fixed; inset: 0; background: rgba(4, 7, 11, 0.82); display: grid; place-items: center; padding: 18px; z-index: 10; }
+.modal { width: min(640px, 100%); max-height: 88vh; overflow: auto; background: var(--panel); border: 1px solid var(--line); border-radius: 18px; padding: 24px; }
+.modal h2 { font-size: 26px; margin-bottom: 10px; }
+.modal h3 { font-size: 16px; margin: 14px 0 6px; }
+.modal .q { font-size: 17px; }
+.mbtns { display: grid; gap: 8px; margin-top: 14px; }
+.mbtns .choice { background: var(--panel2); color: var(--text); border: 1px solid var(--line); border-radius: 12px; padding: 12px; text-align: left; box-shadow: none; font-weight: 400; }
+.mbtns .choice:hover { border-color: var(--amber); }
+.plain { margin: 0 0 10px; padding-left: 20px; display: grid; gap: 6px; }
+.deltas { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 6px; margin: 10px 0; }
+.deltas div { background: #0f161d; border: 1px solid var(--line); border-radius: 10px; padding: 6px 10px; display: flex; flex-direction: column; font-size: 13px; }
+.deltas span { color: var(--muted); }
+.deltas b.neg { color: var(--bad); }
+.deltas b.pos { color: var(--ok); }
+.note { color: #c0ccd8; font-size: 14px; }
+.evt { background: #2a1a1a; border: 1px solid #7a3a36; border-radius: 12px; padding: 10px 12px; margin: 8px 0; }
+.evt b { color: var(--coral); }
+.evt p { margin: 4px 0 0; }
+.score { font-size: 18px; }
+.score b { font-size: 44px; color: var(--amber); }
+.score span { color: var(--teal); margin-left: 8px; }
+.toast { position: fixed; left: 50%; bottom: 22px; transform: translateX(-50%); background: #f4f7fa; color: #11181f; padding: 10px 16px; border-radius: 10px; font-weight: 600; z-index: 20; max-width: 90vw; }
+
+@media (max-width: 1100px) {
+  .stage { grid-template-columns: 1fr; }
+  .statusbar { grid-template-columns: 1fr; }
+  .meters { grid-template-columns: repeat(3, 1fr); }
+}
+@media (max-width: 760px) {
+  .cards { grid-template-columns: 1fr; }
+  .card { grid-template-columns: 1fr; }
+  .card .art { min-height: 120px; }
+  .meters { grid-template-columns: repeat(2, 1fr); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .viewport.flash::after { animation: none; opacity: 0; }
+  .bar i, .cbar i { transition: none; }
+}
+
+/* cartoon space theme: black and navy, chunky borders, soft stars */
+body::before { content: ""; position: fixed; inset: 0; z-index: -1; pointer-events: none; opacity: .7;
+  background-image: radial-gradient(1.5px 1.5px at 20px 30px, #fff, transparent), radial-gradient(1px 1px at 90px 120px, #bcd2ff, transparent), radial-gradient(1.5px 1.5px at 160px 60px, #fff, transparent), radial-gradient(1px 1px at 60px 170px, #ffe7a8, transparent);
+  background-size: 200px 200px; }
+.box, .card, .statusbar, .modal, .meter { border-width: 2px; box-shadow: 0 5px 0 #01030a; }
+.viewport { border-width: 3px; border-color: #3a62b8; box-shadow: 0 6px 0 #01030a; }
+.ghost { border-width: 2px; background: #0b1740; }
+.primary { border-radius: 14px; box-shadow: 0 4px 0 #a56f1c, 0 7px 0 #01030a; }
+.tag { align-self: flex-start; font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: #02040d; background: var(--teal); border-radius: 99px; padding: 2px 10px; }
+.card .primary { margin-top: auto; }
+.why { width: 100%; margin: 4px 0 8px; padding: 10px 12px; border-radius: 12px; border: 2px solid var(--line); font-weight: 700; text-align: left; background: var(--panel2); }
+.why.good { border-color: var(--ok); color: var(--ok); }
+.why.bad { border-color: var(--warn); color: var(--warn); }
+.why:hover { filter: brightness(1.15); }
+.src { background: #0b1a45; border: 2px dashed var(--teal); border-radius: 12px; padding: 10px 12px; font-size: 14px; }
+.src small { color: var(--muted); }
+.src-list li { font-size: 14px; }
+@media (max-width: 760px) { .top-actions { flex-wrap: wrap; } }
+
+</style>
+</head>
+<body>
+<div id="app">
+
+  <header class="topbar">
+    <div class="brand">
+      <span class="logo" aria-hidden="true">&#10022;</span>
+      <div><b>Odyssey Outpost</b><small>Solo survival trainer for junior astronauts</small></div>
+    </div>
+    <div class="top-actions">
+      <button id="btnMusic" class="ghost">Music: on</button>
+      <button id="btnSound" class="ghost">Sound: on</button>
+      <button id="btnSrc" class="ghost">NASA sources</button>
+      <button id="btnHelp" class="ghost">How to play</button>
+    </div>
+  </header>
+
+  <!-- Start screen -->
+  <main id="menu">
+    <section class="hero">
+      <h1>You are the last one at the outpost.</h1>
+      <p class="lead">Walk the base, fix what breaks and look after air, water, food and power. Every job costs time. Stay safe for two weeks.</p>
+    </section>
+
+    <section id="cards" class="cards"></section>
+
+    <p class="foot">Educational prototype. Facts are simplified from public NASA information (tap NASA sources). Not official mission guidance. Not a NASA product.</p>
+  </main>
+
+  <!-- Game screen -->
+  <main id="game" hidden>
+    <section class="statusbar">
+      <div class="when">
+        <div class="dayline"><strong id="sbDay"></strong><span id="sbLeft"></span></div>
+        <div class="clock"><b id="clockTxt">07:00</b><div class="cbar"><i id="clockFill"></i></div></div>
+        <span id="zoneBadge" class="badge">Inside</span>
+      </div>
+      <div id="meters" class="meters"></div>
+    </section>
+
+    <section class="stage">
+      <div id="viewport" class="viewport">
+        <canvas id="cv" width="1100" height="540" aria-label="Outpost view"></canvas>
+        <div id="prompt" class="prompt" hidden></div>
+        <div id="work" class="work" hidden><span id="workLabel"></span><div class="wbar"><i id="workFill"></i></div></div>
+        <div class="touch">
+          <button id="tl" aria-label="Walk left">&#9664;</button>
+          <button id="te" aria-label="Interact">E</button>
+          <button id="tr" aria-label="Walk right">&#9654;</button>
+        </div>
+        <div id="mini" class="mini" aria-hidden="true"></div>
+      </div>
+
+      <aside class="side">
+        <section class="box mc">
+          <h3>Mission Control</h3>
+          <p id="mc"></p>
+          <button id="btnWhy" class="why" hidden></button>
+          <p class="next"><b>Next step:</b> <span id="objective"></span></p>
+          <p class="fc"><b>Forecast:</b> <span id="forecast"></span></p>
+        </section>
+        <section class="box">
+          <h3 id="stTitle">No station nearby</h3>
+          <div id="tasks"></div>
+        </section>
+        <section class="box">
+          <h3>Systems</h3>
+          <div id="chips" class="chips"></div>
+        </section>
+        <section class="box">
+          <h3>Mission log</h3>
+          <div id="log" class="log"></div>
+          <div class="row"><button id="btnRestart" class="ghost">Restart</button><button id="btnMenu" class="ghost">Main menu</button></div>
+        </section>
+      </aside>
+    </section>
+  </main>
+</div>
+
+<div id="modal" class="overlay" hidden>
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="mTitle">
+    <h2 id="mTitle"></h2>
+    <div id="mBody"></div>
+    <div id="mBtns" class="mbtns"></div>
+  </div>
+</div>
+<div id="toast" class="toast" hidden></div>
+
+<script>
+'use strict';
+/* data.js
+   World settings, stations, events and tasks.
+   Change the numbers in WORLDS to make the game easier or harder. */
+
+const VW = 1100, VH = 540, WORLD_W = 2500, GROUND = 410;
+const DAY_START = 7;       // wake up time
+const DAY_END = 22;        // lights out
+const PX_PER_HOUR = 1000;  // walking this far costs one game hour
+const SPEED = 240;         // walking speed in pixels per second
+
+let S = null; // current game state
+let W = null; // current world settings
+
+const $ = id => document.getElementById(id);
+const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+const lerp = (a, b, t) => a + (b - a) * t;
+const rnd = (a, b) => a + Math.random() * (b - a);
+const rint = (a, b) => Math.floor(rnd(a, b + 1));
+const pick = a => a[Math.floor(Math.random() * a.length)];
+function shuffle(a) {
+  const r = a.slice();
+  for (let i = r.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [r[i], r[j]] = [r[j], r[i]];
+  }
+  return r;
+}
+function fmtTime(h) {
+  const hh = Math.floor(h), mm = Math.floor((h - hh) * 60);
+  return String(hh).padStart(2, '0') + ':' + String(mm).padStart(2, '0');
+}
+
+const LABELS = { o2: 'Oxygen', water: 'Water', food: 'Food', power: 'Power', health: 'Health' };
+
+/* ---------- worlds ---------- */
+const WORLDS = {
+  mars: {
+    id: 'mars', code: 'ARES-IV', place: 'Mars', dayName: 'Sol', maxDay: 14,
+    intro: 'An emergency evacuation left you alone at the ARES-IV outpost. The rescue ship needs 20 sols to reach you. A sol is one Martian day, about 24 hours and 37 minutes. Keep your air, water, food and power going until it arrives.',
+    start: { o2: 80, water: 75, food: 85, power: 80, health: 100 },
+    solarMax: 26, rtg: 0, load: 20,
+    o2Gen: 3.2, o2Use: 5, waterUse: 6, reclaimMax: 4.4, foodUse: 6,
+    farmGrow: 14, farmIdle: 4, harvest: 35, dustRate: 4, pods: 0, iceGain: 20
+  },
+  moon: {
+    id: 'moon', code: 'LUNA-II', place: 'the Moon', dayName: 'Day', maxDay: 14,
+    intro: 'The LUNA-II outpost is entering the lunar night. There is no sunlight for about 14 Earth days, the surface gets extremely cold and the solar panels make no power. A small radioisotope power unit keeps the base alive. Survive until sunrise.',
+    start: { o2: 85, water: 80, food: 90, power: 100, health: 100 },
+    solarMax: 0, rtg: 9, load: 13,
+    o2Gen: 3.4, o2Use: 5, waterUse: 5.5, reclaimMax: 4.2, foodUse: 5.5,
+    farmGrow: 9, farmIdle: 3, harvest: 30, dustRate: 0, pods: 3, iceGain: 0
+  }
+};
+
+const NAMES = {
+  mars: { solar: 'Solar Array', antenna: 'Comms Antenna', rover: 'Rover Bay', airlock: 'Airlock', life: 'Life Support', farm: 'Greenhouse', command: 'Command Room', quarters: 'Crew Quarters' },
+  moon: { solar: 'Power Bay', antenna: 'Comms Antenna', rover: 'Rover Bay', airlock: 'Airlock', life: 'Life Support', farm: 'Grow Room', command: 'Command Room', quarters: 'Crew Quarters' }
+};
+const stName = id => NAMES[W.id][id];
+
+/* Walkable stations. zone 'out' is outside (suit needed), 'in' is inside the habitat. */
+const STATIONS = [
+  { id: 'solar', x: 240, zone: 'out' },
+  { id: 'antenna', x: 560, zone: 'out' },
+  { id: 'rover', x: 830, zone: 'out' },
+  { id: 'airlock', x: 962, zone: 'out' },
+  { id: 'airlock', x: 1080, zone: 'in' },
+  { id: 'life', x: 1320, zone: 'in' },
+  { id: 'farm', x: 1670, zone: 'in' },
+  { id: 'command', x: 2000, zone: 'in' },
+  { id: 'quarters', x: 2320, zone: 'in' }
+];
+
+const TIPS = [
+  'Check your suit air before every trip.',
+  'Keep a reserve. Never plan to use every last bit of suit air.',
+  'Small problems grow. Fix leaks early.',
+  'Power is life support. Protect the battery.',
+  'Tired crews make mistakes. Finish the day on time.',
+  'Walking between stations costs time too. Plan your route.'
+];
+
+/* ---------- events ---------- */
+const EVENTS = {
+  dustStorm: {
+    title: 'Dust storm', warn: 2,
+    forecast: 'A dust storm is building. Expect weak solar power and poor visibility.',
+    text: 'A dust storm hit overnight. Solar power is weak for about 3 sols and outside work uses more suit air.',
+    apply() { S.storm = 3; S.sys.dust = clamp(S.sys.dust + 20, 0, 100); },
+    lesson: 'Dust storms cut solar power and cover panels with dust. Switch to power saver mode and clean the panels when the sky clears.'
+  },
+  waterLeak: {
+    title: 'Water line leak',
+    text: 'A fitting in the water line is leaking. You lose extra water every night until it is sealed.',
+    apply() { S.sys.waterLeak = true; },
+    lesson: 'Isolate a leaking line first, then repair it. Small leaks add up over many days.'
+  },
+  hullLeak: {
+    title: 'Micrometeoroid leak',
+    text: 'A tiny impact punched a slow leak in the hull. Air escapes every night until it is patched.',
+    apply() { S.sys.hullLeak = true; },
+    lesson: 'Slow leaks are dangerous because they are easy to miss. Check pressure often and patch early.'
+  },
+  scrubClog: {
+    title: 'CO2 filter clogged',
+    text: 'The CO2 scrubber filter clogged and is almost full.',
+    moon: 'Fine lunar dust clogged the CO2 scrubber filter. It is almost full.',
+    apply() { S.sys.scrub = Math.min(S.sys.scrub, 18); },
+    lesson: 'CO2 builds up faster than most people expect. Swap filters on schedule and before they clog.'
+  },
+  pumpFail: {
+    title: 'Greenhouse pump failure',
+    text: 'The irrigation pump stopped. The crops will not grow until it is restarted.',
+    apply() { S.sys.pump = false; },
+    lesson: 'Food systems are life support too. Check pumps and lights every day.'
+  },
+  commsLoss: {
+    title: 'Antenna out of alignment',
+    text: 'Strong wind knocked the antenna out of alignment. You have no signal to Earth.',
+    moon: 'The antenna lost its lock on Earth. You have no signal.',
+    apply() { S.sys.comms = false; },
+    lesson: 'Without comms you get no forecasts and no help from the ground. Fix the antenna early, with the right safety steps.'
+  },
+  panelDamage: {
+    title: 'Solar panel damage',
+    text: 'Wind blown rocks cracked part of the solar array. Power output is down.',
+    apply() { S.sys.panel = Math.max(30, S.sys.panel - 35); },
+    lesson: 'Damaged panels lose power quickly. Always disconnect the circuit before repairing it.'
+  },
+  powerFault: {
+    title: 'Power controller fault',
+    text: 'The power controller shows a fault. The radioisotope unit is delivering less power.',
+    apply() { S.sys.panel = Math.max(30, S.sys.panel - 40); },
+    lesson: 'Shed load first, then reset. Do not reset a power system under full load.'
+  },
+  heaterFault: {
+    title: 'Heater fault',
+    text: 'A heater controller tripped. The habitat is getting cold and uses extra power until it is fixed.',
+    apply() { S.sys.heaterFault = true; },
+    lesson: 'In the lunar night, heat is life support. Find the cause before restarting a tripped heater.'
+  },
+  dustAirlock: {
+    title: 'Lunar dust in the airlock',
+    text: 'Sharp lunar dust is stuck to your suit seals. Dirty seals use more suit air.',
+    apply() { S.sys.seal = Math.max(20, S.sys.seal - 45); },
+    lesson: 'Lunar dust is sharp and sticks to everything. Apollo crews saw it wear down gear. Clean seals after every trip.'
+  },
+  quake: {
+    title: 'Moonquake',
+    text: 'A moonquake shook the habitat.',
+    apply() {
+      const r = rint(0, 2);
+      if (r === 0) { S.sys.reclaim = Math.max(0, S.sys.reclaim - 45); return 'A moonquake shook the habitat and damaged the water reclaimer.'; }
+      if (r === 1) { S.sys.pump = false; return 'A moonquake shook the habitat and the irrigation pump stopped.'; }
+      S.sys.comms = false; return 'A moonquake shook the habitat and the antenna lost its lock on Earth.';
+    },
+    lesson: 'Check every system after a shake. Damage is not always obvious.'
+  },
+  flare: {
+    title: 'Solar flare', warn: 1,
+    forecast: 'A solar flare is expected. Plan to stay inside that day.',
+    text: 'A solar flare is sending radiation toward the outpost. Stay inside today. Being outside will hurt you.',
+    apply() { S.flare = true; },
+    lesson: 'Radiation from a solar flare is dangerous outside. Stay in the shielded habitat until the alert ends.'
+  }
+};
+const evText = ev => (W.id === 'moon' && ev.moon) ? ev.moon : ev.text;
+
+function buildSchedule(windows) {
+  return windows.map(([e, a, b]) => ({ id: e, day: rint(a, b), fired: false }));
+}
+function forecastList() {
+  const out = [];
+  S.schedule.forEach(it => {
+    const ev = EVENTS[it.id];
+    if (it.fired || !ev.warn) return;
+    const d = it.day - S.day;
+    if (d >= 1 && d <= ev.warn) out.push(ev.forecast + ' Expected in ' + d + ' ' + W.dayName.toLowerCase() + (d > 1 ? 's' : '') + '.');
+  });
+  return out;
+}
+
+/* ---------- tasks ----------
+   Each task: key, label, desc, hours, off (reason it is blocked, or null),
+   run() returns a message, optional check (safety question), why, instant, confirm. */
+function tasksFor(st) {
+  const sy = S.sys, mars = W.id === 'mars', t = [];
+  const add = o => t.push(o);
+  const unit = W.dayName.toLowerCase();
+
+  switch (st.id) {
+    case 'solar':
+      if (mars) {
+        add({ key: 'solar.clean', label: 'Clean the panels', desc: 'Brush off the dust. Dust now: ' + Math.round(sy.dust) + '%.', hours: 2,
+          off: sy.dust < 8 ? 'The panels are already clean.' : null,
+          run() { sy.dust = 0; return 'The panels are clean. Solar output is back up.'; },
+          why: 'Dust blocks sunlight. NASA rovers on Mars have lost power to dust, so clean panels matter.' });
+        add({ key: 'solar.repair', label: 'Replace damaged cells', desc: 'Panel health: ' + Math.round(sy.panel) + '%.', hours: 2.5,
+          off: sy.panel >= 95 ? 'No damage found.' : null,
+          check: { q: 'You found a damaged solar string. What do you do first?', opts: ['Disconnect the string from the power bus', 'Touch the wires to see if they are live', 'Keep working. Panels are safe in daylight'], ans: 0,
+            explain: 'Solar cells make power whenever light hits them. Isolate the circuit before you touch it.' },
+          run() { sy.panel = 100; return 'New cells are installed. The array is back to full strength.'; },
+          why: 'Always isolate a circuit before repairs, even a small one.' });
+      } else {
+        add({ key: 'solar.reset', label: 'Reset the power controller', desc: 'Controller health: ' + Math.round(sy.panel) + '%.', hours: 1.5,
+          off: sy.panel >= 95 ? 'No fault found.' : null,
+          check: { q: 'The power controller shows a fault. What do you do first?', opts: ['Switch off non-essential loads, then reset it', 'Reset it while everything runs at full load', 'Unplug the battery bank'], ans: 0,
+            explain: 'Reduce the load first so the system restarts gently. A reset under full load can trip it again.' },
+          run() { sy.panel = 100; return 'The controller is reset. The power unit is back to full output.'; },
+          why: 'Shed load first, then reset. This is standard practice for power faults.' });
+        add({ key: 'solar.blanket', label: 'Add a thermal blanket', desc: 'One time job. Cuts the heat the batteries lose.', hours: 2,
+          off: S.blanket ? 'Already installed.' : null,
+          run() { S.blanket = true; return 'The thermal blanket is on. The batteries lose less heat.'; },
+          why: 'The lunar night is extremely cold, so insulation saves power.' });
+      }
+      break;
+
+    case 'antenna':
+      add({ key: 'antenna.align', label: 'Realign the antenna', desc: sy.comms ? 'The antenna is locked on Earth.' : 'No signal. The dish is out of alignment.', hours: 1.5,
+        off: sy.comms ? 'The antenna is already aligned.' : null,
+        check: { q: 'Before you move the dish by hand, what do you do?', opts: ['Disable the motor drive so it cannot move while you work', 'Stand in front of the dish to watch it', 'Leave the motor on. It is faster'], ans: 0,
+          explain: 'Lock out the drive so it cannot move unexpectedly and trap or hit you.' },
+        run() { sy.comms = true; return 'The antenna is locked on Earth. Signal is back.'; },
+        why: 'Lock out moving equipment before touching it. This is called lockout and tagout.' });
+      break;
+
+    case 'rover':
+      if (mars) {
+        add({ key: 'rover.ice', label: 'Drive out and drill for ice', desc: 'About 3 hours. Gives water and costs some power.', hours: 3,
+          off: S.storm > 0 ? 'Visibility is too low to drive in the storm.' : (S.suit < 55 ? 'Not enough suit air for a 3 hour trip. Go back and refill.' : null),
+          check: { q: 'The ice site is far from the habitat. What is your suit air plan?', opts: ['Make sure suit air covers the round trip plus a reserve', 'Go fast and decide when you get there', 'Turn off the radio to save power'], ans: 0,
+            explain: 'Plan for the round trip plus a safety reserve, and turn back early if air runs low.' },
+          run() { S.res.water = clamp(S.res.water + W.iceGain, 0, 100); S.res.power = clamp(S.res.power - 5, 0, 100); return 'You drilled ice and melted it. Water +' + W.iceGain + '. Rover charging cost 5% power.'; },
+          why: 'Water ice under Martian soil can be melted and cleaned for drinking.' });
+      } else {
+        add({ key: 'rover.pod', label: 'Fetch a supply pod (' + S.pods + ' left)', desc: 'About 3 hours. Gives water, food and oxygen.', hours: 3,
+          off: S.pods <= 0 ? 'All supply pods are collected.' : (S.suit < 55 ? 'Not enough suit air for a 3 hour trip. Go back and refill.' : null),
+          check: { q: 'The supply pod is far from the habitat. What is your suit air plan?', opts: ['Make sure suit air covers the round trip plus a reserve', 'Go fast and decide when you get there', 'Turn off the radio to save power'], ans: 0,
+            explain: 'Plan for the round trip plus a safety reserve, and turn back early if air runs low.' },
+          run() { S.pods--; S.res.water = clamp(S.res.water + 14, 0, 100); S.res.food = clamp(S.res.food + 10, 0, 100); S.res.o2 = clamp(S.res.o2 + 8, 0, 100); return 'You brought back a supply pod. Water +14, food +10, oxygen +8.'; },
+          why: 'Missions often pre-position supplies on the surface before the crew arrives.' });
+      }
+      break;
+
+    case 'airlock':
+      if (st.zone === 'in') {
+        add({ key: 'airlock.exit', label: 'Suit up and go outside', desc: 'Takes 30 minutes and about 2% habitat oxygen.', hours: 0.5, off: null,
+          check: { q: 'Before you open the outer hatch, what do you check?', opts: ['Suit seals, suit oxygen and radio, then depressurize', 'Only the radio. The suit looks after the rest', 'Nothing. Go quickly to save time'], ans: 0,
+            explain: 'Always run a full suit check before going outside. A small seal fault can become life threatening fast.' },
+          run() {
+            S.res.o2 = clamp(S.res.o2 - 2, 0, 100); S.zone = 'out'; S.suit = 100; S.warnedSuit = false;
+            P.x = 962; P.target = null; S.stats.eva++; Sfx.hiss();
+            return 'You are outside. Suit air is 100%. Every minute outside uses suit air.';
+          },
+          why: 'The airlock keeps habitat air inside when you leave.' });
+        if (!mars) add({ key: 'airlock.brush', label: 'Brush dust off suit seals', desc: 'Seal condition: ' + Math.round(sy.seal) + '%.', hours: 1,
+          off: sy.seal > 85 ? 'The seals are clean.' : null,
+          run() { sy.seal = 100; return 'The seals are clean. Your suit holds air well again.'; },
+          why: 'Lunar dust is sharp and sticks to everything. Apollo crews reported it wearing down gear and irritating their eyes and throats.' });
+      } else {
+        add({ key: 'airlock.enter', label: 'Go inside and repressurize', desc: 'Takes 30 minutes. Your suit gets refilled when you go out again.', hours: 0.5, off: null,
+          run() { S.zone = 'in'; P.x = 1080; P.target = null; Sfx.hiss(); return 'You are back inside. The airlock is repressurized.'; },
+          why: 'Never rush the airlock cycle.' });
+      }
+      break;
+
+    case 'life':
+      add({ key: 'life.scrub', label: 'Swap the CO2 filter', desc: 'Filter: ' + Math.round(sy.scrub) + '%. It wears down about 12% every night.', hours: 1,
+        off: sy.scrub > 85 ? 'The filter is fresh.' : null,
+        check: { q: 'What happens if the CO2 filter is full?', opts: ['CO2 builds up and causes headaches and confusion', 'Oxygen levels rise', 'Nothing. CO2 is harmless in a sealed room'], ans: 0,
+          explain: 'CO2 buildup was a real danger on Apollo 13, where the crew had to adapt their filters.' },
+        run() { sy.scrub = 100; return 'A fresh filter is in. CO2 levels are dropping.'; },
+        why: 'Check filters on a schedule. CO2 buildup is slow and easy to ignore.' });
+      add({ key: 'life.reclaim', label: 'Service the water reclaimer', desc: 'Efficiency: ' + Math.round(sy.reclaim) + '%. It recycles used water when healthy.', hours: 1.5,
+        off: sy.reclaim > 85 ? 'It is running well.' : null,
+        run() { sy.reclaim = 100; return 'The reclaimer is serviced and recycling water well.'; },
+        why: 'The space station recycles most of its water. A working reclaimer saves a huge amount of supply.' });
+      if (sy.waterLeak) add({ key: 'life.waterleak', label: 'Seal the water leak', desc: 'Water is escaping every night.', hours: 1, off: null,
+        check: { q: 'You found a leaking water line. What do you do first?', opts: ['Close the isolation valve upstream of the leak', 'Wait until the tank is empty', 'Tape it and leave'], ans: 0,
+          explain: 'Isolate the section first so the leak stops and you can repair it safely.' },
+        run() { sy.waterLeak = false; return 'The leak is sealed. Water loss is back to normal.'; },
+        why: 'Isolate, then repair. It is the same idea for any leaking line.' });
+      if (sy.hullLeak) add({ key: 'life.hullleak', label: 'Patch the hull leak', desc: 'Air is escaping every night.', hours: 1.5, off: null,
+        check: { q: 'You hear a slow hiss and cabin pressure is dropping. What first?', opts: ['Isolate the module, locate the leak, then patch it', 'Ignore it. There is plenty of oxygen', 'Open the airlock to balance the pressure'], ans: 0,
+          explain: 'Isolate the module to protect the rest of the habitat, find the leak, then patch it.' },
+        run() { sy.hullLeak = false; return 'The hull is patched. Pressure is holding.'; },
+        why: 'Pressure loss is one of the most serious emergencies in space.' });
+      if (sy.heaterFault) add({ key: 'life.heater', label: 'Reset the heater controller', desc: 'The habitat is getting cold.', hours: 1, off: null,
+        check: { q: 'A heater controller tripped. What do you do before restarting it?', opts: ['Check for a short or damage, then restart', 'Restart it again and again until it works', 'Ignore the warning lights'], ans: 0,
+          explain: 'A tripped heater usually means a fault. Find the cause before you restart it.' },
+        run() { sy.heaterFault = false; return 'The heater is back. The habitat is warming up.'; },
+        why: 'Heat is life support on the Moon.' });
+      break;
+
+    case 'farm':
+      if (!sy.pump) add({ key: 'farm.pump', label: 'Restart the irrigation pump', desc: 'The pump has stopped.', hours: 1, off: null,
+        run() { sy.pump = true; return 'The pump is running again.'; },
+        why: 'Plants need steady water. Check pumps often.' });
+      add({ key: 'farm.tend', label: 'Water and tend the crops', desc: 'Tended crops grow much faster. Uses about 2% water.', hours: 1.5,
+        off: !sy.pump ? 'The pump is down. Restart it first.' : (S.tended ? 'Already tended today.' : null),
+        run() { S.tended = true; S.res.water = clamp(S.res.water - 2, 0, 100); return 'The crops are watered. Growth is on track.'; },
+        why: 'Growing food saves supplies on long missions.' });
+      add({ key: 'farm.harvest', label: 'Harvest the crops', desc: 'Growth: ' + Math.round(sy.growth) + '%. Ready at 100%.', hours: 1,
+        off: sy.growth < 100 ? 'Not ready yet.' : null,
+        run() { S.res.food = clamp(S.res.food + W.harvest, 0, 100); sy.growth = 0; return 'Harvest done. Food +' + W.harvest + '.'; },
+        why: 'Fresh food also helps morale on long missions.' });
+      break;
+
+    case 'command':
+      add({ key: 'command.call', label: 'Daily call to Mission Control', desc: 'Get the forecast and advice. Needs the antenna.', hours: 0.5,
+        off: !sy.comms ? 'No signal. Realign the antenna outside first.' : (S.reported ? 'You already called today.' : null),
+        run() {
+          S.reported = true; S.res.health = clamp(S.res.health + 2, 0, 100); S.forecast = forecastList();
+          const f = S.forecast.length ? S.forecast.join(' ') : 'No storms or radiation alerts in the next few ' + unit + 's.';
+          return 'Mission Control: ' + f + ' ' + pick(TIPS);
+        } });
+      add({ key: 'command.saver', label: S.saver ? 'Turn power saver off' : 'Turn power saver on',
+        desc: S.saver ? 'Back to normal power use. Crops grow at full speed.' : 'Cuts power use by 25%. Crops grow slower.', hours: 0.1, instant: true, off: null,
+        run() { S.saver = !S.saver; return S.saver ? 'Power saver is on. Non-essential systems are off.' : 'Power saver is off.'; },
+        why: 'Turning off non-essential systems to protect the battery is called load shedding. Real crews do it in emergencies.' });
+      break;
+
+    case 'quarters':
+      add({ key: 'quarters.sleep', label: 'Sleep and end the day', desc: 'Resources change overnight. Systems wear down.', hours: 0, instant: true, off: null,
+        confirm: S.hour < 20 ? 'You still have about ' + Math.round(DAY_END - S.hour) + ' hours left today. End the day anyway?' : null,
+        run() { endDay(''); return null; } });
+      add({ key: 'quarters.med', label: 'Use a medical kit (' + S.kits + ' left)', desc: 'Restores 20 health.', hours: 0.5,
+        off: S.kits <= 0 ? 'No medical kits left.' : (S.res.health > 85 ? 'You are in good health.' : null),
+        run() { S.kits--; S.res.health = clamp(S.res.health + 20, 0, 100); return 'You treated yourself. Health +20.'; },
+        why: 'Medical kits are limited. Prevent injuries first.' });
+      break;
+  }
+  return t;
+}
+
+
+/* ---------- missions (scenarios) ----------
+   windows = [event, earliest day, latest day]. start / sys change the starting state. */
+const SCENARIOS = {
+  mars_duty: {
+    world: 'mars', title: 'Mars: Base Duty', tag: 'Good first mission',
+    blurb: 'Keep the Mars base running for 14 sols. Clean panels, grow food, find ice.',
+    facts: ['14 sols', 'Solar panels and greenhouse', 'A few small surprises'],
+    brief: 'You are on duty at the ARES-IV base on Mars. Do your chores: clean the solar panels, grow food and fix small problems. Stay safe for 14 sols.',
+    start: { o2: 90, water: 85, food: 90, power: 90 }, sys: {},
+    windows: [['waterLeak', 4, 6], ['dustStorm', 7, 9], ['pumpFail', 10, 12], ['commsLoss', 11, 13]]
+  },
+  mars_left: {
+    world: 'mars', title: 'Mars: Left Behind', tag: 'Survival mission',
+    blurb: 'A storm forced the crew to leave. You are alone. Rescue comes in 14 sols. Inspired by the movie The Martian.',
+    facts: ['Antenna is broken at the start', 'Less food and water', 'Big storms and leaks'],
+    brief: 'A fierce storm made the crew leave in a hurry, and you were left behind. Your antenna is broken, so nobody can hear you. Fix it, make food, find water and survive until the rescue ship arrives.',
+    start: { o2: 75, water: 60, food: 60, power: 80 }, sys: { comms: false, dust: 30, growth: 5 },
+    windows: [['waterLeak', 2, 4], ['dustStorm', 4, 6], ['pumpFail', 6, 8], ['scrubClog', 7, 9], ['panelDamage', 8, 10], ['hullLeak', 10, 12], ['flare', 12, 13]]
+  },
+  moon_duty: {
+    world: 'moon', title: 'Moon: Base Duty', tag: 'Good first mission',
+    blurb: 'Keep the Moon base warm and breathing for 14 days.',
+    facts: ['14 days', 'Power unit and heater', 'A few small surprises'],
+    brief: 'You are on duty at the LUNA-II base on the Moon. The sun is down, so a small power unit runs the base. Do your chores and fix small problems.',
+    start: { o2: 90, water: 85, food: 90, power: 100 }, sys: {},
+    windows: [['scrubClog', 3, 5], ['dustAirlock', 5, 7], ['commsLoss', 7, 9], ['flare', 10, 12]]
+  },
+  moon_night: {
+    world: 'moon', title: 'Moon: The Long Night', tag: 'Survival mission',
+    blurb: 'About 14 Earth days of darkness. Extreme cold, sharp dust and radiation.',
+    facts: ['No solar power', 'Heat and battery care', 'Supply pods and solar flares'],
+    brief: 'The lunar night has begun. It lasts about 14 Earth days. It is freezing, the solar panels make no power and sharp dust is everywhere. Protect your power and survive until sunrise.',
+    start: {}, sys: {},
+    windows: [['scrubClog', 2, 4], ['heaterFault', 3, 5], ['dustAirlock', 4, 6], ['commsLoss', 5, 7], ['quake', 6, 8], ['hullLeak', 8, 10], ['powerFault', 9, 11], ['flare', 10, 12], ['quake', 12, 13]]
+  }
+};
+
+/* ---------- NASA sources ----------
+   Facts are simplified from public NASA pages. No live data is downloaded by the game. */
+const SOURCES = {
+  mars:  { short: 'NASA Mars Exploration', name: 'NASA Mars Exploration Program (science.nasa.gov/mars)', fact: 'A sol (Mars day) is about 24 hours 39 minutes. Mars has thin air, cold weather and dust storms.' },
+  mer:   { short: 'NASA/JPL Mars rovers', name: 'NASA/JPL Mars rovers: Spirit, Opportunity, Curiosity, Perseverance', fact: 'Dust builds up on rover solar panels. A huge dust storm in 2018 knocked Opportunity into low power mode.' },
+  ice:   { short: 'NASA Phoenix and LCROSS', name: 'NASA Phoenix lander (Mars) and LCROSS mission (Moon)', fact: 'Phoenix found water ice under Martian soil. LCROSS found water in a dark Moon crater.' },
+  moon:  { short: 'NASA Moon and Artemis', name: 'NASA Moon facts and Artemis program (science.nasa.gov/moon)', fact: 'A lunar night lasts about 14 Earth days and gets extremely cold. Moonquakes were recorded by Apollo instruments.' },
+  apollo:{ short: 'NASA Apollo reports', name: 'NASA Apollo mission reports and Lunar Surface Journal', fact: 'Apollo crews found lunar dust sharp and sticky. It wore down gear and irritated their eyes and throats.' },
+  iss:   { short: 'NASA ISS life support', name: 'NASA International Space Station life support (ECLSS)', fact: 'The ISS recycles most of its water and uses scrubbers to remove CO2 from the air.' },
+  a13:   { short: 'NASA Apollo 13', name: 'NASA Apollo 13 mission history', fact: 'On Apollo 13 the crew built an adapter so square filters could clean the air in the round fittings.' },
+  rtg:   { short: 'NASA Radioisotope Power', name: 'NASA Radioisotope Power Systems (rps.nasa.gov)', fact: 'Rovers like Curiosity and Perseverance use a radioisotope power system. It makes steady power with no sunlight.' },
+  veggie:{ short: 'NASA Veggie on the ISS', name: 'NASA Veggie plant growth system on the ISS', fact: 'Astronauts grew and ate lettuce in space. Plants need steady water and light.' },
+  dsn:   { short: 'NASA Deep Space Network', name: 'NASA Deep Space Network (DSN)', fact: 'Giant dishes in California, Spain and Australia talk to spacecraft. Signals take minutes to reach Mars.' },
+  sw:    { short: 'NASA Space Weather', name: 'NASA Heliophysics: solar flares and space weather', fact: 'Solar flares send out radiation. Astronauts shelter in shielded areas when a strong one is expected.' },
+  safety:{ short: 'NASA EVA safety', name: 'NASA spacewalk (EVA) and safety training', fact: 'Astronauts practice spacewalks in a giant pool and always follow checklists, including lockout steps.' },
+  hrp:   { short: 'NASA Human Research', name: 'NASA Human Research Program', fact: 'NASA studies sleep, health and stress so crews can stay well on long missions.' }
+};
+const TASK_SRC = {
+  'solar.clean': 'mer', 'solar.repair': 'safety', 'solar.reset': 'rtg', 'solar.blanket': 'moon', 'antenna.align': 'safety',
+  'rover.ice': 'ice', 'rover.pod': 'moon', 'airlock.exit': 'safety', 'airlock.enter': 'safety', 'airlock.brush': 'apollo',
+  'life.scrub': 'a13', 'life.reclaim': 'iss', 'life.waterleak': 'iss', 'life.hullleak': 'iss', 'life.heater': 'moon',
+  'farm.pump': 'veggie', 'farm.tend': 'veggie', 'farm.harvest': 'veggie', 'command.call': 'dsn', 'command.saver': 'mer',
+  'quarters.sleep': 'hrp', 'quarters.med': 'hrp'
+};
+const EVENT_SRC = {
+  dustStorm: 'mer', waterLeak: 'iss', hullLeak: 'iss', scrubClog: 'a13', pumpFail: 'veggie', commsLoss: 'dsn',
+  panelDamage: 'mer', powerFault: 'rtg', heaterFault: 'moon', dustAirlock: 'apollo', quake: 'moon', flare: 'sw'
+};
+
+</script>
+<script>
+'use strict';
+/* audio.js
+   All sound is made in the browser with the Web Audio API. No audio files needed.
+   Note: on the Moon there is no air, so there is no wind outside. You only hear your suit. */
+
+const Sfx = {
+  ctx: null, master: null, musicGain: null, noise: null,
+  on: true, musicOn: true, eva: false,
+  wind: null, hum: null, breath: null,
+
+  init() {
+    if (this.ctx) { this.ctx.resume(); return; }
+    const AC = window.AudioContext || window.webkitAudioContext;
+    if (!AC) return;
+    const c = this.ctx = new AC();
+    this.master = c.createGain();
+    this.master.gain.value = this.on ? 0.9 : 0;
+    this.master.connect(c.destination);
+    this.musicGain = c.createGain();
+    this.musicGain.gain.value = this.musicOn ? 0.5 : 0;
+    this.musicGain.connect(this.master);
+    const len = c.sampleRate * 2, buf = c.createBuffer(1, len, c.sampleRate), d = buf.getChannelData(0);
+    for (let i = 0; i < len; i++) d[i] = Math.random() * 2 - 1;
+    this.noise = buf;
+    this.makeAmbience();
+    this.makeMusic();
+  },
+
+  noiseSrc() {
+    const s = this.ctx.createBufferSource();
+    s.buffer = this.noise; s.loop = true;
+    return s;
+  },
+
+  makeAmbience() {
+    const c = this.ctx;
+    // wind (Mars only, controlled by scene())
+    this.wind = c.createGain(); this.wind.gain.value = 0;
+    const ws = this.noiseSrc(), wf = c.createBiquadFilter();
+    wf.type = 'bandpass'; wf.frequency.value = 520; wf.Q.value = 0.7;
+    ws.connect(wf); wf.connect(this.wind); this.wind.connect(this.master); ws.start();
+    const lfo = c.createOscillator(), lg = c.createGain();
+    lfo.frequency.value = 0.12; lg.gain.value = 180;
+    lfo.connect(lg); lg.connect(wf.frequency); lfo.start();
+    // habitat hum (life support machinery)
+    this.hum = c.createGain(); this.hum.gain.value = 0;
+    [[55, 'triangle', 0.5], [110.5, 'sine', 0.25], [165, 'sine', 0.1]].forEach(([f, type, v]) => {
+      const o = c.createOscillator(), g = c.createGain();
+      o.type = type; o.frequency.value = f; g.gain.value = v;
+      o.connect(g); g.connect(this.hum); o.start();
+    });
+    this.hum.connect(this.master);
+    // suit breathing (shaped by an interval below)
+    this.breath = c.createGain(); this.breath.gain.value = 0.0001;
+    const bs = this.noiseSrc(), bf = c.createBiquadFilter();
+    bf.type = 'bandpass'; bf.frequency.value = 800; bf.Q.value = 0.9;
+    bs.connect(bf); bf.connect(this.breath); this.breath.connect(this.master); bs.start();
+    setInterval(() => {
+      if (!this.eva || !this.ctx) return;
+      const t = c.currentTime, g = this.breath.gain;
+      g.cancelScheduledValues(t);
+      g.setValueAtTime(0.0001, t);
+      g.linearRampToValueAtTime(0.1, t + 0.9);
+      g.linearRampToValueAtTime(0.0001, t + 1.5);
+      g.linearRampToValueAtTime(0.07, t + 2.0);
+      g.linearRampToValueAtTime(0.0001, t + 2.7);
+    }, 3000);
+  },
+
+  makeMusic() {
+    const c = this.ctx;
+    const f = c.createBiquadFilter();
+    f.type = 'lowpass'; f.frequency.value = 800; f.connect(this.musicGain);
+    const lfo = c.createOscillator(), lg = c.createGain();
+    lfo.frequency.value = 0.07; lg.gain.value = 250;
+    lfo.connect(lg); lg.connect(f.frequency); lfo.start();
+    const pad = [0, 1, 2].map(() => {
+      const o = c.createOscillator(), g = c.createGain();
+      o.type = 'sawtooth'; o.detune.value = (Math.random() - 0.5) * 12; g.gain.value = 0.05;
+      o.connect(g); g.connect(f); o.start();
+      return o;
+    });
+    const chords = [[110, 164.8, 220], [98, 146.8, 196], [87.3, 130.8, 174.6], [98, 146.8, 185]];
+    let i = 0;
+    const step = () => {
+      const t = c.currentTime;
+      pad.forEach((o, k) => o.frequency.setTargetAtTime(chords[i][k], t, 1.6));
+      i = (i + 1) % chords.length;
+    };
+    // soft twinkling notes, like faraway stars
+    const bells = [392, 440, 523, 587, 659, 784];
+    setInterval(() => { if (this.musicOn && this.on) this.tone(bells[Math.floor(Math.random() * bells.length)], 2.4, 'sine', 0.025, 0, 0); }, 5200);
+    step(); setInterval(step, 9000);
+  },
+
+  setSound(v) { this.on = v; if (this.ctx) this.master.gain.setTargetAtTime(v ? 0.9 : 0, this.ctx.currentTime, 0.05); },
+  setMusic(v) { this.musicOn = v; if (this.ctx) this.musicGain.gain.setTargetAtTime(v ? 0.5 : 0, this.ctx.currentTime, 0.2); },
+
+  /* Set the background sound for where the player is. */
+  scene(zone, storm, world, powered) {
+    if (!this.ctx) return;
+    const t = this.ctx.currentTime, mars = world === 'mars', out = zone === 'out';
+    this.eva = out;
+    let w = 0;
+    if (mars) w = out ? (storm ? 0.16 : 0.05) : (storm ? 0.03 : 0.006);
+    this.wind.gain.setTargetAtTime(w, t, 0.4);
+    this.hum.gain.setTargetAtTime(powered ? (out ? 0.012 : 0.05) : 0.004, t, 0.4);
+  },
+
+  tone(freq, dur, type, vol, when, slide) {
+    if (!this.ctx) return;
+    const c = this.ctx, t = c.currentTime + (when || 0);
+    const o = c.createOscillator(), g = c.createGain();
+    o.type = type || 'sine';
+    o.frequency.setValueAtTime(freq, t);
+    if (slide) o.frequency.exponentialRampToValueAtTime(Math.max(20, freq + slide), t + dur);
+    g.gain.setValueAtTime(vol == null ? 0.12 : vol, t);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+    o.connect(g); g.connect(this.master);
+    o.start(t); o.stop(t + dur + 0.02);
+  },
+
+  burst(dur, freq, q, vol, type, when, fade) {
+    if (!this.ctx) return;
+    const c = this.ctx, t = c.currentTime + (when || 0);
+    const s = this.noiseSrc(), f = c.createBiquadFilter(), g = c.createGain();
+    f.type = type || 'bandpass'; f.frequency.value = freq; f.Q.value = q || 1;
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.linearRampToValueAtTime(vol, t + (fade ? dur * 0.3 : 0.005));
+    g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+    s.connect(f); f.connect(g); g.connect(this.master);
+    s.start(t, Math.random() * 1.5); s.stop(t + dur + 0.02);
+  },
+
+  click() { this.tone(900, 0.05, 'square', 0.05); },
+  step(zone) {
+    if (zone === 'out') this.burst(0.1, 420, 0.8, 0.22);
+    else { this.burst(0.06, 1500, 2, 0.12); this.tone(170, 0.05, 'square', 0.03); }
+  },
+  hiss() { this.burst(1.4, 5000, 0.5, 0.2, 'highpass', 0, true); this.tone(120, 0.3, 'square', 0.04, 1.2); },
+  work(dur) {
+    const n = Math.max(2, Math.round(dur / 0.22));
+    for (let i = 0; i < n; i++) {
+      this.tone(300 + Math.random() * 220, 0.06, 'square', 0.05, i * 0.22);
+      this.burst(0.05, 2200, 3, 0.1, 'bandpass', i * 0.22 + 0.05);
+    }
+  },
+  done() { this.tone(520, 0.1, 'triangle', 0.1); this.tone(780, 0.16, 'triangle', 0.1, 0.09); },
+  good() { [660, 830, 990].forEach((f, i) => this.tone(f, 0.18, 'triangle', 0.12, i * 0.09)); },
+  error() { this.tone(150, 0.28, 'sawtooth', 0.12, 0, -60); },
+  warn() { this.tone(520, 0.12, 'square', 0.06); this.tone(390, 0.16, 'square', 0.06, 0.14); },
+  alarm() { for (let i = 0; i < 4; i++) { this.tone(880, 0.14, 'square', 0.07, i * 0.3); this.tone(660, 0.14, 'square', 0.07, i * 0.3 + 0.15); } },
+  sleep() { this.tone(330, 1.2, 'sine', 0.1, 0, -200); this.tone(247, 1.4, 'sine', 0.08, 0.2, -120); },
+  win() { [523, 659, 784, 1046].forEach((f, i) => this.tone(f, 0.5, 'triangle', 0.13, i * 0.16)); },
+  lose() { [330, 262, 196, 147].forEach((f, i) => this.tone(f, 0.6, 'sawtooth', 0.09, i * 0.25)); }
+};
+
+</script>
+<script>
+'use strict';
+/* render.js
+   Everything drawn on the canvas: sky, ground, outside equipment, the habitat rooms,
+   the astronaut and the weather. */
+
+const cv = $('cv'), ctx = cv.getContext('2d');
+let STARS = [], ROCKS = [], vignette = null;
+const TOP = 232; // ceiling height of the habitat
+const ROOMS = [['airlock', 1000, 1150], ['life', 1150, 1500], ['farm', 1500, 1850], ['command', 1850, 2170], ['quarters', 2170, 2450]];
+
+/* ---------- small helpers ---------- */
+function rr(x, y, w, h, r, fill, stroke, lw) {
+  ctx.beginPath();
+  ctx.moveTo(x + r, y);
+  ctx.arcTo(x + w, y, x + w, y + h, r);
+  ctx.arcTo(x + w, y + h, x, y + h, r);
+  ctx.arcTo(x, y + h, x, y, r);
+  ctx.arcTo(x, y, x + w, y, r);
+  ctx.closePath();
+  if (fill) { ctx.fillStyle = fill; ctx.fill(); }
+  if (stroke) { ctx.strokeStyle = stroke; ctx.lineWidth = lw || 2; ctx.stroke(); }
+}
+function circ(x, y, r, fill, stroke, lw) {
+  ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2);
+  if (fill) { ctx.fillStyle = fill; ctx.fill(); }
+  if (stroke) { ctx.strokeStyle = stroke; ctx.lineWidth = lw || 2; ctx.stroke(); }
+}
+function line(x1, y1, x2, y2, col, lw) {
+  ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x2, y2);
+  ctx.strokeStyle = col; ctx.lineWidth = lw || 2; ctx.stroke();
+}
+function txt(s, x, y, col, font, align) {
+  ctx.fillStyle = col; ctx.font = font || '12px system-ui, sans-serif'; ctx.textAlign = align || 'center';
+  ctx.fillText(s, x, y);
+}
+const hexToRgb = h => [parseInt(h.slice(1, 3), 16), parseInt(h.slice(3, 5), 16), parseInt(h.slice(5, 7), 16)];
+const toHex = n => Math.round(n).toString(16).padStart(2, '0');
+function mixHex(a, b, t) {
+  const A = hexToRgb(a), B = hexToRgb(b);
+  return '#' + toHex(lerp(A[0], B[0], t)) + toHex(lerp(A[1], B[1], t)) + toHex(lerp(A[2], B[2], t));
+}
+
+/* Mars sky colours through the day: [hour, [top, middle, horizon]] */
+const SKY_KEYS = [
+  [5, ['#0b0b1f', '#1d1a33', '#3a2a3c']],
+  [7, ['#5a4660', '#c47f68', '#efb98c']],
+  [12, ['#a97c66', '#d4a27a', '#ecc89d']],
+  [17.5, ['#7d5e72', '#d58a6b', '#efb98c']],
+  [19.5, ['#1f2b4d', '#4a4a73', '#8a6f84']],
+  [22, ['#05060f', '#0a0c1c', '#171a2e']]
+];
+function skyAt(h) {
+  let i = 0;
+  while (i < SKY_KEYS.length - 2 && h > SKY_KEYS[i + 1][0]) i++;
+  const [h0, c0] = SKY_KEYS[i], [h1, c1] = SKY_KEYS[i + 1];
+  const t = clamp((h - h0) / (h1 - h0), 0, 1);
+  return c0.map((c, k) => mixHex(c, c1[k], t));
+}
+function lightAt(h) {
+  if (h < 5 || h > 21) return 0.05;
+  if (h < 7) return lerp(0.05, 0.6, (h - 5) / 2);
+  if (h < 12) return lerp(0.6, 1, (h - 7) / 5);
+  if (h < 17.5) return lerp(1, 0.8, (h - 12) / 5.5);
+  if (h < 19.5) return lerp(0.8, 0.2, (h - 17.5) / 2);
+  return lerp(0.2, 0.05, (h - 19.5) / 1.5);
+}
+
+function genScenery() {
+  STARS = [];
+  for (let i = 0; i < 140; i++) STARS.push({ x: Math.random() * VW, y: Math.random() * 300, r: Math.random() < 0.15 ? 2 : 1, p: Math.random() * 6 });
+  ROCKS = [];
+  const cols = W.id === 'mars' ? ['#8a4a40', '#a25a48', '#7a3f3c', '#c0705a'] : ['#5b6272', '#6c7384', '#4a505f', '#7d8596'];
+  for (let i = 0; i < 170; i++) {
+    ROCKS.push({ x: Math.random() * WORLD_W, y: GROUND + 6 + Math.random() * (VH - GROUND - 16), w: 3 + Math.random() * (i % 7 === 0 ? 24 : 12), h: 2 + Math.random() * 6, c: pick(cols) });
+  }
+}
+
+/* ---------- sky, mountains, ground ---------- */
+function drawSky(cam, t, mars) {
+  let cols;
+  if (mars) {
+    cols = skyAt(S.hour);
+    if (S.storm > 0) cols = cols.map(c => mixHex(c, '#8a5a48', 0.55));
+  } else cols = ['#02030a', '#060a18', '#10172b'];
+  const g = ctx.createLinearGradient(0, 0, 0, GROUND);
+  g.addColorStop(0, cols[0]); g.addColorStop(0.6, cols[1]); g.addColorStop(1, cols[2]);
+  ctx.fillStyle = g; ctx.fillRect(0, 0, VW, VH);
+
+  let starA = mars ? 1 - lightAt(S.hour) : 1;
+  if (mars && S.storm > 0) starA *= 0.2;
+  STARS.forEach(s => {
+    ctx.globalAlpha = clamp(starA, 0, 1) * (0.6 + 0.4 * Math.sin(t * 0.002 + s.p));
+    ctx.fillStyle = '#fff';
+    ctx.fillRect(((s.x - cam * 0.03) % VW + VW) % VW, s.y, s.r, s.r);
+  });
+  ctx.globalAlpha = 1;
+
+  if (mars) {
+    const f = clamp((S.hour - 6) / 14, 0, 1);
+    if (S.hour > 5.5 && S.hour < 20.5) {
+      const sx = lerp(120, VW - 120, f), sy = GROUND - 50 - Math.sin(f * Math.PI) * 280;
+      const low = 1 - Math.sin(f * Math.PI);
+      const gl = ctx.createRadialGradient(sx, sy, 4, sx, sy, 110);
+      gl.addColorStop(0, 'rgba(255,230,190,' + (S.storm > 0 ? 0.25 : 0.7) + ')'); gl.addColorStop(1, 'rgba(255,200,150,0)');
+      ctx.fillStyle = gl; ctx.fillRect(sx - 120, sy - 120, 240, 240);
+      circ(sx, sy, 16, mixHex('#fff4dc', '#ffb070', low), null);
+    }
+  } else {
+    const ex = 880 - cam * 0.02, ey = 110;
+    const gl = ctx.createRadialGradient(ex, ey, 20, ex, ey, 90);
+    gl.addColorStop(0, 'rgba(120,180,255,.35)'); gl.addColorStop(1, 'rgba(120,180,255,0)');
+    ctx.fillStyle = gl; ctx.fillRect(ex - 100, ey - 100, 200, 200);
+    circ(ex, ey, 32, '#2f6fb5', null);
+    ctx.fillStyle = '#4c9a63';
+    ctx.beginPath(); ctx.ellipse(ex - 8, ey - 6, 11, 8, 0.4, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.ellipse(ex + 12, ey + 10, 8, 6, -0.3, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = 'rgba(255,255,255,.55)';
+    ctx.beginPath(); ctx.ellipse(ex + 2, ey - 14, 14, 3, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = 'rgba(0,10,30,.35)';
+    ctx.beginPath(); ctx.arc(ex, ey, 32, -Math.PI * 0.5, Math.PI * 0.5); ctx.arc(ex + 14, ey, 32, Math.PI * 0.5, -Math.PI * 0.5, true); ctx.fill();
+  }
+}
+function drawRange(cam, f, base, amp, col, seed) {
+  ctx.fillStyle = col; ctx.beginPath(); ctx.moveTo(0, GROUND);
+  for (let x = 0; x <= VW + 20; x += 20) {
+    const wx = x + cam * f;
+    const y = base - (Math.sin(wx * 0.004 + seed) * amp + Math.sin(wx * 0.011 + seed * 2) * amp * 0.45 + Math.sin(wx * 0.027 + seed) * amp * 0.15);
+    ctx.lineTo(x, y);
+  }
+  ctx.lineTo(VW, GROUND); ctx.closePath(); ctx.fill();
+}
+function drawGround(cam, mars) {
+  const g = ctx.createLinearGradient(0, GROUND - 6, 0, VH);
+  g.addColorStop(0, mars ? '#b0624c' : '#7a8190'); g.addColorStop(1, mars ? '#6d3a37' : '#3d4352');
+  ctx.fillStyle = g; ctx.fillRect(0, GROUND - 6, VW, VH - GROUND + 6);
+  ctx.save(); ctx.translate(-cam, 0);
+  ROCKS.forEach(r => {
+    if (r.x < cam - 40 || r.x > cam + VW + 40) return;
+    ctx.fillStyle = r.c; ctx.beginPath(); ctx.ellipse(r.x, r.y, r.w, r.h, 0, 0, Math.PI * 2); ctx.fill();
+  });
+  ctx.restore();
+}
+
+/* ---------- outside equipment ---------- */
+function drawSolar(x, t, mars) {
+  const sy = S.sys;
+  if (mars) {
+    [-135, 0, 135].forEach((dx, i) => {
+      const cx = x + dx, w = 112, h = 62, y0 = GROUND - 62 - h;
+      line(cx, GROUND, cx, y0 + h, '#aab7c8', 6);
+      line(cx - 30, GROUND, cx, y0 + h + 4, '#8c9bb0', 3); line(cx + 30, GROUND, cx, y0 + h + 4, '#8c9bb0', 3);
+      const poly = () => { ctx.beginPath(); ctx.moveTo(cx - w / 2, y0 + 10); ctx.lineTo(cx + w / 2, y0); ctx.lineTo(cx + w / 2, y0 + h); ctx.lineTo(cx - w / 2, y0 + h + 10); ctx.closePath(); };
+      poly(); ctx.fillStyle = '#1d3b6b'; ctx.fill(); ctx.strokeStyle = '#b7dcff'; ctx.lineWidth = 2; ctx.stroke();
+      for (let k = 1; k < 4; k++) line(cx - w / 2 + k * w / 4, y0 + 10 - k * 2.5, cx - w / 2 + k * w / 4, y0 + h + 10 - k * 2.5, '#4f78b0', 1);
+      for (let k = 1; k < 3; k++) line(cx - w / 2, y0 + 10 + k * h / 3, cx + w / 2, y0 + k * h / 3, '#4f78b0', 1);
+      poly(); ctx.fillStyle = 'rgba(200,140,95,' + (sy.dust / 100 * 0.8).toFixed(2) + ')'; ctx.fill();
+      if (sy.panel < 95 && i === 1) {
+        ctx.strokeStyle = '#d9ecff'; ctx.lineWidth = 1.5; ctx.beginPath();
+        ctx.moveTo(cx - 20, y0 + 6); ctx.lineTo(cx - 5, y0 + 26); ctx.lineTo(cx - 18, y0 + 40); ctx.lineTo(cx + 6, y0 + 58);
+        ctx.moveTo(cx + 16, y0 + 4); ctx.lineTo(cx + 24, y0 + 30); ctx.stroke();
+        if (Math.sin(t * 0.008) > 0) circ(cx, y0 - 8, 4, '#ff5a5a');
+      }
+    });
+    txt(stName('solar'), x, GROUND - 150, '#f2e6dc', 'bold 13px system-ui, sans-serif');
+  } else {
+    [0, 1, 2].forEach(i => {
+      const bx = x - 110 + i * 74;
+      rr(bx, GROUND - 84, 64, 76, 6, S.blanket ? '#c9a24a' : '#6b7487', '#cfd7e6', 2);
+      if (S.blanket) { line(bx + 8, GROUND - 70, bx + 56, GROUND - 30, 'rgba(255,240,180,.5)', 1); line(bx + 12, GROUND - 30, bx + 50, GROUND - 76, 'rgba(120,80,20,.4)', 1); }
+      rr(bx + 10, GROUND - 24, 44, 8, 3, '#2a3142');
+      circ(bx + 54, GROUND - 76, 3, sy.panel < 70 ? '#ff5a5a' : '#6fe3a1');
+    });
+    rr(x + 130, GROUND - 60, 92, 52, 10, '#4b5565', '#9aa7bb', 2);
+    for (let i = 0; i < 5; i++) ctx.fillStyle = '#7e8aa0', ctx.fillRect(x + 138 + i * 16, GROUND - 72, 6, 14);
+    rr(x + 150, GROUND - 46, 52, 10, 5, 'rgba(255,150,60,' + (0.6 + 0.25 * Math.sin(t * 0.004)).toFixed(2) + ')');
+    txt('RTG', x + 176, GROUND - 22, '#dfe6f2', 'bold 11px system-ui, sans-serif');
+    line(x + 100, GROUND - 20, x + 130, GROUND - 24, '#222a38', 4);
+    if (sy.panel < 70 && Math.sin(t * 0.01) > 0.3) { circ(x + 176, GROUND - 82, 4, '#ffd36a'); circ(x + 184, GROUND - 90, 2, '#fff'); }
+    txt(stName('solar'), x + 20, GROUND - 106, '#e4ecf7', 'bold 13px system-ui, sans-serif');
+  }
+}
+function drawAntenna(x, t) {
+  const ok = S.sys.comms;
+  line(x, GROUND, x, GROUND - 90, '#b7c3d4', 7);
+  line(x - 26, GROUND, x, GROUND - 60, '#8e9db3', 4); line(x + 26, GROUND, x, GROUND - 60, '#8e9db3', 4);
+  ctx.save(); ctx.translate(x, GROUND - 100); ctx.rotate(ok ? -0.7 : 0.45);
+  ctx.fillStyle = '#e8eef7'; ctx.strokeStyle = '#9fb0c8'; ctx.lineWidth = 2;
+  ctx.beginPath(); ctx.ellipse(0, 0, 46, 16, 0, 0, Math.PI); ctx.fill(); ctx.stroke();
+  line(0, 0, 0, -30, '#9fb0c8', 3); circ(0, -32, 4, '#ffd36a');
+  ctx.restore();
+  if (ok) {
+    for (let k = 0; k < 3; k++) {
+      const r = 24 + ((t * 0.03 + k * 14) % 42);
+      ctx.strokeStyle = 'rgba(127,216,255,' + (1 - (r - 24) / 42).toFixed(2) + ')'; ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.arc(x + 8, GROUND - 128, r, -1.3, -0.2); ctx.stroke();
+    }
+  } else if (Math.sin(t * 0.008) > 0) circ(x, GROUND - 92, 5, '#ff5a5a');
+  txt(stName('antenna'), x, GROUND - 168, '#e4ecf7', 'bold 13px system-ui, sans-serif');
+}
+function drawRover(x, t, mars) {
+  rr(x - 50, GROUND - 46, 100, 26, 8, mars ? '#d8c8a0' : '#cfd6e2', '#f4ecd6', 2);
+  rr(x - 34, GROUND - 76, 50, 32, 8, '#cdd9e8', '#f4f8ff', 2);
+  rr(x - 28, GROUND - 70, 38, 20, 5, '#27456b');
+  line(x + 34, GROUND - 46, x + 34, GROUND - 88, '#aab7c8', 3); circ(x + 34, GROUND - 90, 6, '#e8eef7', '#9fb0c8', 2);
+  [-34, 34].forEach(dx => {
+    circ(x + dx, GROUND - 12, 15, '#2a3142', '#aab6c8', 3);
+    line(x + dx - 9, GROUND - 12, x + dx + 9, GROUND - 12, '#58657d', 2); line(x + dx, GROUND - 21, x + dx, GROUND - 3, '#58657d', 2);
+  });
+  circ(x + 50, GROUND - 34, 4, '#fff6c8');
+  txt('Rover', x, GROUND - 106, '#e4ecf7', 'bold 13px system-ui, sans-serif');
+}
+
+/* ---------- habitat ---------- */
+function drawHabitat(t) {
+  const lit = S.res.power <= 0 ? 0.18 : (S.res.power < 12 ? 0.55 + 0.25 * Math.sin(t * 0.02) : 1);
+  rr(992, TOP - 18, 1466, GROUND - TOP + 36, 30, '#7f90a6', '#c9d6e6', 3);
+  ROOMS.forEach(([id, a, b]) => {
+    const g = ctx.createLinearGradient(0, TOP, 0, GROUND);
+    g.addColorStop(0, '#33445f'); g.addColorStop(1, '#1d2a40');
+    ctx.fillStyle = g; ctx.fillRect(a, TOP, b - a, GROUND - TOP);
+    ctx.fillStyle = 'rgba(255,246,208,' + (0.85 * lit).toFixed(2) + ')'; ctx.fillRect(a + (b - a) / 2 - 45, TOP + 6, 90, 5);
+    const lg = ctx.createRadialGradient((a + b) / 2, TOP + 10, 5, (a + b) / 2, TOP + 10, 170);
+    lg.addColorStop(0, 'rgba(255,240,200,' + (0.2 * lit).toFixed(2) + ')'); lg.addColorStop(1, 'rgba(255,240,200,0)');
+    ctx.fillStyle = lg; ctx.fillRect(a, TOP, b - a, GROUND - TOP);
+    if (id === 'airlock') roomAirlock(a, t);
+    else if (id === 'life') roomLife(a, t);
+    else if (id === 'farm') roomFarm(a, t);
+    else if (id === 'command') roomCommand(a, t);
+    else roomQuarters(a, t);
+    txt(NAMES[W.id][id], (a + b) / 2, TOP - 4, '#dbe6f5', 'bold 12px system-ui, sans-serif');
+  });
+  ctx.fillStyle = '#55657e'; ctx.fillRect(1000, GROUND - 8, 1450, 8);
+  for (let i = 1; i < ROOMS.length; i++) {
+    const x = ROOMS[i][1];
+    ctx.fillStyle = '#4a5b76'; ctx.fillRect(x - 4, TOP, 8, GROUND - TOP - 108);
+    ctx.fillStyle = '#e0b84a'; ctx.fillRect(x - 4, GROUND - 112, 8, 4);
+  }
+  line(1000, TOP + 22, 2450, TOP + 22, '#5d708c', 3);
+  line(1000, TOP + 30, 2450, TOP + 30, '#4a5d7a', 2);
+  if (lit < 1) { ctx.fillStyle = 'rgba(2,4,12,' + ((1 - lit) * 0.7).toFixed(2) + ')'; ctx.fillRect(1000, TOP, 1450, GROUND - TOP); }
+}
+function roomAirlock(a, t) {
+  for (let i = 0; i < 6; i++) { ctx.fillStyle = i % 2 ? '#e0b84a' : '#262e3c'; ctx.fillRect(a, GROUND - 130 + i * 20, 10, 20); }
+  rr(a + 10, GROUND - 130, 8, 122, 3, '#3b4962');
+  circ(a + 40, TOP + 40, 5, '#6fe3a1');
+  // suit on the rack
+  const suitHere = S.zone === 'in';
+  if (suitHere) {
+    rr(a + 85, GROUND - 120, 36, 56, 10, '#eef3fa', '#a9bad0', 2);
+    circ(a + 103, GROUND - 136, 15, '#f4f7fc', '#a9bad0', 2);
+    rr(a + 96, GROUND - 144, 20, 14, 6, '#17314d');
+    line(a + 92, GROUND - 66, a + 92, GROUND - 24, '#e8eef7', 8); line(a + 114, GROUND - 66, a + 114, GROUND - 24, '#e8eef7', 8);
+  }
+  rr(a + 40, GROUND - 68, 34, 40, 4, '#46566f', '#7d8fa9', 2);
+  txt('O2', a + 57, GROUND - 44, '#cfe3ff', 'bold 11px system-ui, sans-serif');
+}
+function roomLife(a, t) {
+  const sy = S.sys;
+  // CO2 scrubber
+  rr(a + 15, GROUND - 150, 66, 142, 8, '#51627c', '#8fa3bf', 2);
+  const sc = sy.scrub, col = sc < 30 ? '#ff5a5a' : sc < 55 ? '#ffcf5a' : '#5ae08a';
+  [-110, -62].forEach(dy => {
+    circ(a + 48, GROUND + dy, 19, '#26354c', '#8fa3bf', 2);
+    for (let i = 0; i < 4; i++) { const ang = t * 0.012 + i * Math.PI / 2; line(a + 48, GROUND + dy, a + 48 + Math.cos(ang) * 15, GROUND + dy + Math.sin(ang) * 15, '#a9bcd6', 2); }
+  });
+  circ(a + 70, GROUND - 138, 4, col);
+  txt('CO2', a + 48, GROUND - 156, '#cfe3ff', 'bold 11px system-ui, sans-serif');
+  // water reclaimer
+  rr(a + 95, GROUND - 110, 60, 102, 8, '#46566f', '#8fa3bf', 2);
+  const rc = sy.reclaim, rcol = rc < 35 ? '#ff5a5a' : rc < 60 ? '#ffcf5a' : '#5ae08a';
+  circ(a + 142, GROUND - 98, 4, rcol);
+  for (let i = 0; i < 4; i++) line(a + 105, GROUND - 90 + i * 16, a + 145, GROUND - 90 + i * 16, '#5d708c', 2);
+  txt('RECLAIM', a + 125, GROUND - 116, '#cfe3ff', 'bold 10px system-ui, sans-serif');
+  // water tank
+  rr(a + 170, GROUND - 160, 70, 150, 14, '#2a3a52', '#9fb7d4', 2);
+  const wl = S.res.water / 100 * 130;
+  rr(a + 176, GROUND - 16 - wl, 58, wl, 8, 'rgba(61,143,224,.75)');
+  txt('H2O', a + 205, GROUND - 168, '#cfe3ff', 'bold 11px system-ui, sans-serif');
+  if (sy.waterLeak) {
+    for (let i = 0; i < 3; i++) { const y = (t * 0.12 + i * 30) % 90; circ(a + 245, GROUND - 100 + y, 3, '#5ab0ff'); }
+    ctx.fillStyle = 'rgba(61,143,224,.5)'; ctx.beginPath(); ctx.ellipse(a + 245, GROUND - 6, 22, 4, 0, 0, Math.PI * 2); ctx.fill();
+  }
+  // oxygen generator
+  rr(a + 262, GROUND - 120, 66, 112, 8, '#4a5a70', '#9fb3cc', 2);
+  for (let i = 0; i < 3; i++) { const by = GROUND - 30 - ((t * 0.03 + i * 20) % 70); circ(a + 295 + Math.sin(by * 0.2) * 10, by, 3, 'rgba(180,230,255,.7)'); }
+  txt('O2 GEN', a + 295, GROUND - 126, '#cfe3ff', 'bold 10px system-ui, sans-serif');
+  if (sy.hullLeak) {
+    for (let i = 0; i < 6; i++) { const y = (t * 0.05 + i * 11) % 66; ctx.fillStyle = 'rgba(255,255,255,' + (0.55 - y / 130).toFixed(2) + ')'; circ(a + 335 + Math.sin(i + t * 0.01) * 8 + y * 0.3, TOP + 36 + y, 3 + y * 0.05, ctx.fillStyle); }
+  }
+  if (W.id === 'moon') {
+    rr(a + 330, GROUND - 60, 16, 50, 3, sy.heaterFault ? '#27506b' : '#6b3a2a', '#9fb3cc', 2);
+    if (!sy.heaterFault) { ctx.fillStyle = 'rgba(255,140,60,.35)'; ctx.fillRect(a + 332, GROUND - 56, 12, 42); }
+  }
+}
+function roomFarm(a, t) {
+  const gr = S.sys.growth / 100, on = S.res.power > 0;
+  [GROUND - 62, GROUND - 126, GROUND - 190].forEach(y => {
+    if (on) {
+      const g = ctx.createLinearGradient(0, y - 40, 0, y);
+      g.addColorStop(0, 'rgba(255,90,200,.0)'); g.addColorStop(1, 'rgba(255,90,200,.28)');
+      ctx.fillStyle = g; ctx.fillRect(a + 24, y - 40, 296, 40);
+      ctx.fillStyle = '#ff7ad8'; ctx.fillRect(a + 24, y - 42, 296, 3);
+    }
+    rr(a + 20, y, 304, 8, 3, '#6c7d96');
+    for (let k = 0; k < 8; k++) {
+      const px = a + 42 + k * 36, h = 8 + gr * 30 + (k % 3) * 3;
+      line(px, y, px, y - h, '#4fbf63', 3);
+      ctx.fillStyle = '#58cf70';
+      ctx.beginPath(); ctx.ellipse(px - 6, y - h * 0.6, 7, 3, -0.5, 0, Math.PI * 2); ctx.fill();
+      ctx.beginPath(); ctx.ellipse(px + 6, y - h, 7, 3, 0.5, 0, Math.PI * 2); ctx.fill();
+      if (gr >= 1) circ(px, y - h - 4, 4, '#e0a64e');
+    }
+  });
+  rr(a + 330, GROUND - 100, 16, 90, 4, '#46566f', '#8fa3bf', 2);
+  circ(a + 338, GROUND - 90, 4, S.sys.pump ? '#5ae08a' : '#ff5a5a');
+  if (S.tended) for (let i = 0; i < 4; i++) circ(a + 338 + Math.sin(i) * 3, GROUND - 60 + ((t * 0.1 + i * 20) % 50), 2, '#5ab0ff');
+}
+function roomCommand(a, t) {
+  const ok = S.sys.comms;
+  rr(a + 20, GROUND - 76, 280, 14, 4, '#5b6b84', '#8fa3bf', 2);
+  ctx.fillStyle = '#3d4b63'; ctx.fillRect(a + 40, GROUND - 62, 10, 54); ctx.fillRect(a + 270, GROUND - 62, 10, 54);
+  rr(a + 30, GROUND - 166, 80, 58, 5, '#0d1626', '#8aa0c0', 2);
+  ctx.strokeStyle = '#59d0c0'; ctx.lineWidth = 2; ctx.beginPath();
+  for (let i = 0; i <= 14; i++) { const px = a + 36 + i * 5, py = GROUND - 136 + Math.sin(i * 0.8 + t * 0.004) * 14; i ? ctx.lineTo(px, py) : ctx.moveTo(px, py); }
+  ctx.stroke();
+  rr(a + 120, GROUND - 182, 100, 74, 5, '#0d1626', '#8aa0c0', 2);
+  if (ok) {
+    circ(a + 170, GROUND - 146, 24, '#2a72c8');
+    ctx.fillStyle = '#4c9a63'; ctx.beginPath(); ctx.ellipse(a + 162, GROUND - 150, 9, 7, 0.4, 0, Math.PI * 2); ctx.fill();
+    for (let i = 0; i < 4; i++) rr(a + 196 + i * 5, GROUND - 124 - i * 4, 3, 4 + i * 4, 1, '#6fe3a1');
+  } else if (Math.sin(t * 0.008) > 0) txt('NO SIGNAL', a + 170, GROUND - 142, '#ff6a6a', 'bold 13px system-ui, sans-serif');
+  rr(a + 230, GROUND - 166, 62, 58, 5, '#0d1626', '#8aa0c0', 2);
+  for (let i = 0; i < 4; i++) rr(a + 238, GROUND - 158 + i * 13, 6 + (S.res[['o2', 'water', 'food', 'power'][i]] / 100) * 40, 7, 2, ['#6fd3ff', '#5aa7ff', '#9be26e', '#ffd35a'][i]);
+  rr(a + 130, GROUND - 52, 46, 12, 5, '#2c3a52'); line(a + 153, GROUND - 40, a + 153, GROUND - 8, '#3d4b63', 5);
+}
+function roomQuarters(a, t) {
+  rr(a + 20, GROUND - 86, 150, 78, 4, '#46566f', '#8fa3bf', 2);
+  rr(a + 28, GROUND - 56, 134, 18, 6, '#3a6ea5');
+  rr(a + 28, GROUND - 62, 36, 12, 5, '#e8f0ff');
+  rr(a + 28, GROUND - 148, 134, 18, 6, '#3a6ea5'); rr(a + 28, GROUND - 154, 36, 12, 5, '#e8f0ff');
+  line(a + 24, GROUND - 150, a + 24, GROUND - 86, '#8fa3bf', 4);
+  rr(a + 195, GROUND - 160, 64, 52, 26, '#0d1626', '#8fa3bf', 3);
+  STARS.slice(0, 10).forEach(s => ctx.fillRect(a + 205 + (s.x % 44), GROUND - 150 + (s.y % 32), 1.5, 1.5));
+  rr(a + 270, GROUND - 130, 40, 120, 5, '#4a5a70', '#9fb3cc', 2);
+  rr(a + 278, GROUND - 120, 24, 24, 4, '#e8eef7'); line(a + 290, GROUND - 116, a + 290, GROUND - 100, '#e8453c', 5); line(a + 282, GROUND - 108, a + 298, GROUND - 108, '#e8453c', 5);
+  txt('Medical', a + 290, GROUND - 134, '#cfe3ff', 'bold 10px system-ui, sans-serif');
+}
+
+/* ---------- markers, player ---------- */
+function drawMarkers(t) {
+  const pulse = 0.5 + 0.5 * Math.sin(t * 0.005);
+  STATIONS.forEach(st => {
+    if (st.zone !== S.zone) return;
+    const near = Math.abs(st.x - P.x) < 64;
+    ctx.lineWidth = near ? 3 : 2;
+    ctx.strokeStyle = st.id === S.hl ? 'rgba(255,226,122,' + (0.5 + 0.5 * pulse).toFixed(2) + ')' : near ? 'rgba(127,216,255,.95)' : 'rgba(127,216,255,.28)';
+    ctx.beginPath(); ctx.ellipse(st.x, GROUND + 8, 38, 8, 0, 0, Math.PI * 2); ctx.stroke();
+    if (stationAlert(st.id)) {
+      const y = GROUND - 196 + Math.sin(t * 0.006 + st.x) * 4;
+      circ(st.x, y, 11, '#e8453c', '#fff', 2); txt('!', st.x, y + 5, '#fff', 'bold 15px system-ui, sans-serif');
+    }
+  });
+}
+function drawPlayer(t) {
+  const eva = S.zone === 'out';
+  ctx.save(); ctx.translate(P.x, GROUND); ctx.scale(P.dir >= 0 ? 1 : -1, 1); ctx.lineCap = 'round';
+  const sw = P.walking ? Math.sin(P.phase) * 10 : 0, wk = P.working ? Math.sin(t * 0.02) * 14 : 0;
+  const body = eva ? '#eef3fa' : '#3a6ea5', trim = eva ? '#a9bad0' : '#27496f';
+  ctx.fillStyle = 'rgba(0,0,0,.28)'; ctx.beginPath(); ctx.ellipse(0, 2, 26, 6, 0, 0, Math.PI * 2); ctx.fill();
+  line(-2, -58, 8 + (P.working ? 10 : -sw * 0.6), -40 + (P.working ? -10 + wk : 4), trim, 8);
+  line(-5, -26, -5 + sw, -3, body, 10); line(5, -26, 5 - sw, -3, body, 10);
+  ctx.fillStyle = eva ? '#7f8da3' : '#1d2b42'; ctx.fillRect(-10 + sw, -7, 14, 7); ctx.fillRect(-sw, -7, 14, 7);
+  if (eva) rr(-25, -70, 13, 32, 4, '#c9d5e6', '#8fa1ba', 2);
+  rr(-13, -68, 26, 44, 9, body, trim, 2);
+  if (eva) { rr(-6, -58, 12, 10, 2, '#2a3f5d'); circ(0, -52, 2, '#ff6b6b'); }
+  else { ctx.fillStyle = '#e8f0ff'; ctx.fillRect(-13, -46, 26, 4); }
+  line(2, -60, 10 + (P.working ? 16 : sw * 0.6), -44 + (P.working ? -16 - wk : 6), body, 8);
+  if (eva) {
+    circ(2, -82, 17, '#f4f7fc', '#a9bad0', 2); rr(-4, -90, 20, 15, 7, '#17314d');
+    ctx.fillStyle = 'rgba(120,200,255,.5)'; ctx.fillRect(1, -87, 9, 3);
+  } else {
+    circ(2, -80, 13, '#d9a679', '#a97c52', 2);
+    ctx.fillStyle = '#2b1f1a'; ctx.beginPath(); ctx.arc(2, -83, 13, Math.PI, 0); ctx.fill();
+    circ(8, -80, 1.6, '#222');
+  }
+  ctx.restore();
+  if (P.working) for (let i = 0; i < 4; i++) circ(P.x + P.dir * (26 + Math.random() * 14), GROUND - 45 + (Math.random() - 0.5) * 20, 2, '#ffd36a');
+}
+
+/* ---------- main draw ---------- */
+function draw(t) {
+  const mars = W.id === 'mars';
+  const cam = clamp(P.x - VW / 2, 0, WORLD_W - VW);
+  ctx.clearRect(0, 0, VW, VH);
+  drawSky(cam, t, mars);
+  drawRange(cam, 0.12, 330, 46, mars ? '#6e4150' : '#2a3042', 1);
+  drawRange(cam, 0.3, 365, 34, mars ? '#8a4f4c' : '#363d50', 4);
+  drawGround(cam, mars);
+  ctx.save(); ctx.translate(-cam, 0);
+  drawSolar(240, t, mars); drawAntenna(560, t); drawRover(830, t, mars);
+  ctx.restore();
+
+  // outside light level
+  const dark = mars ? (1 - lightAt(S.hour)) * 0.55 : 0.28;
+  ctx.fillStyle = 'rgba(5,8,28,' + dark.toFixed(2) + ')'; ctx.fillRect(0, 0, VW, VH);
+  if (S.storm > 0 && mars) { ctx.fillStyle = 'rgba(150,90,60,.3)'; ctx.fillRect(0, 0, VW, VH); }
+
+  ctx.save(); ctx.translate(-cam, 0);
+  drawHabitat(t); drawMarkers(t); drawPlayer(t);
+  ctx.restore();
+
+  if (S.storm > 0 && mars) {
+    ctx.strokeStyle = 'rgba(240,190,150,.3)'; ctx.lineWidth = 1.5; ctx.beginPath();
+    for (let i = 0; i < 110; i++) {
+      const x = (i * 97 + t * 0.9 * (1 + (i % 5) * 0.2)) % VW, y = (i * 53 + t * 0.1 * (i % 3)) % VH;
+      ctx.moveTo(x, y); ctx.lineTo(x - 16, y + 3);
+    }
+    ctx.stroke();
+  }
+  if (S.flare) { ctx.fillStyle = 'rgba(255,120,40,' + (0.07 + 0.05 * Math.sin(t * 0.004)).toFixed(3) + ')'; ctx.fillRect(0, 0, VW, VH); }
+  if (!vignette) {
+    vignette = ctx.createRadialGradient(VW / 2, VH / 2, VH * 0.45, VW / 2, VH / 2, VW * 0.65);
+    vignette.addColorStop(0, 'rgba(0,0,0,0)'); vignette.addColorStop(1, 'rgba(0,0,0,.5)');
+  }
+  ctx.fillStyle = vignette; ctx.fillRect(0, 0, VW, VH);
+}
+
+</script>
+<script>
+'use strict';
+/* game.js
+   Game state, rules, interface and the main loop. */
+
+const P = { x: 2320, dir: -1, walking: false, phase: 0, working: false, workT: 0, workDur: 1, task: null, extra: 0, target: null, stepDist: 0 };
+const keys = { left: false, right: false };
+let modalOpen = false, dirty = true, lastUi = 0, panelTasks = [], panelSig = '', toastTimer = 0;
+
+const METERS = [
+  ['o2', 'Oxygen', '#6fd3ff'], ['water', 'Water', '#5aa7ff'], ['food', 'Food', '#9be26e'],
+  ['power', 'Power', '#ffd35a'], ['health', 'Health', '#ff9aa2'], ['suit', 'Suit air', '#d9e6ff']
+];
+
+/* ---------- start, menu ---------- */
+function startGame(id) {
+  const sc = SCENARIOS[id];
+  W = Object.assign({}, WORLDS[sc.world]); W.scen = id;
+  S = {
+    world: sc.world, scen: id, why: null, lastExplain: '', lastMiss: false, day: 1, hour: DAY_START, zone: 'in', over: false,
+    res: Object.assign({}, W.start, sc.start), suit: 100, warnedSuit: false,
+    sys: Object.assign({ dust: 0, panel: 100, scrub: 100, reclaim: 100, growth: 15, pump: true, comms: true, hullLeak: false, waterLeak: false, heaterFault: false, seal: 100 }, sc.sys),
+    storm: 0, flare: false, saver: false, blanket: false, tended: false, reported: false,
+    pods: W.pods, kits: 3, checked: {}, forecast: [], schedule: buildSchedule(sc.windows), happened: [], log: [], hl: null,
+    stats: { tasks: 0, eva: 0, right: 0, wrong: 0 }
+  };
+  P.x = 2320; P.dir = -1; P.target = null; P.working = false; P.task = null; P.walking = false;
+  keys.left = keys.right = false;
+  genScenery(); panelSig = '';
+  $('menu').hidden = true; $('game').hidden = false;
+  buildMeters(); buildMini(); $('btnWhy').hidden = true;
+  Sfx.init(); Sfx.click();
+  addLog('Mission started: ' + sc.title + '.');
+  say('Welcome. Walk with A and D, or click the ground. Stand on a glowing pad to see its tasks.');
+  modal(sc.title,
+    '<p>' + sc.brief + '</p>' +
+    '<ul class="plain"><li>&#128694; A / D keys or click to walk</li><li>&#9881; Stand on a glowing pad, press E</li>' +
+    '<li>&#9200; Every job costs time. The day ends at ' + fmtTime(DAY_END) + '</li><li>&#129489;&#8205;&#128640; Outside, watch your suit air</li>' +
+    '<li>&#128716; Sleep in Crew Quarters to end the day</li><li>&#10067; Tap the Why? button to learn from every result</li></ul>',
+    [['Begin ' + W.dayName + ' 1', () => { closeModal(); Sfx.click(); say(suggest().t); }]]);
+  dirty = true; ui();
+}
+function toMenu() {
+  $('game').hidden = true; $('menu').hidden = false; S = null;
+  Sfx.scene('in', false, 'moon', false);
+}
+
+/* ---------- messages ---------- */
+function say(m) { $('mc').textContent = m; }
+function addLog(m) {
+  S.log.unshift({ d: S.day, h: S.hour, m }); S.log.length = Math.min(S.log.length, 30); dirty = true;
+}
+function toast(m) {
+  const el = $('toast'); el.textContent = m; el.hidden = false;
+  clearTimeout(toastTimer); toastTimer = setTimeout(() => { el.hidden = true; }, 2200);
+}
+function flash() {
+  const v = $('viewport'); v.classList.remove('flash'); void v.offsetWidth; v.classList.add('flash');
+}
+function modal(title, html, buttons) {
+  $('mTitle').textContent = title; $('mBody').innerHTML = html;
+  const b = $('mBtns'); b.innerHTML = '';
+  buttons.forEach(([label, fn, cls]) => {
+    const el = document.createElement('button');
+    el.textContent = label; el.className = cls || 'primary'; el.onclick = fn; b.appendChild(el);
+  });
+  $('modal').hidden = false; modalOpen = true; keys.left = keys.right = false;
+}
+function closeModal() { $('modal').hidden = true; modalOpen = false; }
+
+/* ---------- "Why?" explanations and sources ---------- */
+function setWhy(ok, title, text, src) {
+  if (!S) return;
+  S.why = { ok, title, text, src };
+  const b = $('btnWhy'); b.hidden = false; b.className = 'why ' + (ok ? 'good' : 'bad');
+  b.textContent = ok ? '\u2705 Why did that work? Tap' : '\u26A0\uFE0F Why? Tap to learn';
+}
+function showWhy() {
+  if (!S || !S.why || modalOpen) return;
+  const w = S.why, s = SOURCES[w.src];
+  Sfx.click();
+  modal((w.ok ? '\u2705 ' : '\u26A0\uFE0F ') + w.title,
+    '<p class="q">' + w.text + '</p>' + (s ? '<p class="src"><b>NASA fact:</b> ' + s.fact + '<br><small>Source: ' + s.name + '</small></p>' : ''),
+    [['Got it', () => { closeModal(); Sfx.click(); }]]);
+}
+function showSources() {
+  if (modalOpen) return;
+  modal('NASA sources',
+    '<p class="note">Facts in this game are simplified from public NASA information. The game does not download live data.</p><ul class="plain src-list">' +
+    Object.keys(SOURCES).map(k => '<li><b>' + SOURCES[k].name + '</b><br><span class="muted">' + SOURCES[k].fact + '</span></li>').join('') + '</ul>',
+    [['Close', closeModal]]);
+}
+
+/* ---------- rules ---------- */
+function suitRate() { return 12 * (S.storm > 0 ? 1.5 : 1) * (W.id === 'moon' && S.sys.seal < 50 ? 1.4 : 1); }
+
+function calcDeltas(on) {
+  const sy = S.sys;
+  const gen = W.solarMax * (1 - sy.dust / 100) * (sy.panel / 100) * (S.storm > 0 ? 0.2 : 1) + W.rtg * (sy.panel / 100);
+  const load = W.load * (S.saver ? 0.75 : 1) + (sy.heaterFault ? 6 : 0) - (S.blanket ? 1.5 : 0);
+  return {
+    gen, load, power: gen - load,
+    o2: (on ? W.o2Gen : 0) - W.o2Use - (sy.hullLeak ? 4 : 0),
+    water: (on ? W.reclaimMax * sy.reclaim / 100 : 0) - W.waterUse - (sy.waterLeak ? 4 : 0),
+    food: -W.foodUse
+  };
+}
+
+function advance(h) {
+  if (!S || S.over || h <= 0) return;
+  S.hour += h; dirty = true;
+  if (S.zone === 'out') {
+    S.suit -= suitRate() * h;
+    if (W.id === 'moon') S.sys.seal = clamp(S.sys.seal - 2.5 * h, 0, 100);
+    if (S.flare) {
+      S.res.health -= (W.id === 'moon' ? 9 : 6) * h;
+      if (S.res.health <= 0) return fail('You were caught outside during the solar flare. Radiation was too high.');
+    }
+    if (S.suit <= 0) { S.suit = 0; return fail('Your suit ran out of oxygen outside.'); }
+    if (S.suit < 30 && !S.warnedSuit) {
+      S.warnedSuit = true; Sfx.warn(); say('Suit air is below 30%. Return to the airlock now.'); flash(); addLog('Warning: suit air below 30%.');
+    }
+  }
+  if (S.hour >= DAY_END) forcedEnd();
+}
+
+function forcedEnd() {
+  let note = 'Time ran out for the day.';
+  if (S.zone === 'out') {
+    S.res.health = clamp(S.res.health - 15, 0, 100);
+    S.res.o2 = clamp(S.res.o2 - 3, 0, 100);
+    S.zone = 'in';
+    note = 'You were still outside at lights out. A safety timer pulled you inside, but you are exhausted and lost some health and air.';
+  }
+  endDay(note);
+}
+
+function endDay(note) {
+  if (S.over) return;
+  const before = Object.assign({}, S.res), lines = [], sy = S.sys;
+  P.working = false;
+  if (note) lines.push(note);
+  Sfx.sleep();
+
+  let d = calcDeltas(true);
+  S.res.power = clamp(S.res.power + d.power, 0, 100);
+  const blackout = S.res.power <= 0;
+  if (blackout) d = calcDeltas(false);
+  S.res.o2 = clamp(S.res.o2 + d.o2, 0, 100);
+  S.res.water = clamp(S.res.water + d.water, 0, 100);
+  S.res.food = clamp(S.res.food + d.food, 0, 100);
+
+  const grow = (!blackout && sy.pump) ? (S.tended ? W.farmGrow * (S.saver ? 0.6 : 1) : W.farmIdle) : 0;
+  sy.growth = clamp(sy.growth + grow, 0, 100);
+  sy.dust = clamp(sy.dust + W.dustRate + (S.storm > 0 ? 8 : 0), 0, 100);
+  sy.reclaim = clamp(sy.reclaim - 6, 0, 100);
+  sy.scrub = clamp(sy.scrub - 12, 0, 100);
+
+  let h = 0;
+  if (sy.scrub < 30) { h -= 8; lines.push('The CO2 filter is nearly full. CO2 is building up and you woke with a headache.'); }
+  if (S.res.o2 < 15) { h -= 15; lines.push('Oxygen is very low. You are struggling to breathe.'); }
+  if (S.res.water < 8) { h -= 15; lines.push('You are dehydrated.'); }
+  if (S.res.food < 8) { h -= 12; lines.push('You are starving.'); }
+  if (blackout) { h -= 15; lines.push('The battery ran flat. Heat and life support went offline overnight.'); }
+  if (sy.heaterFault) { h -= 8; lines.push('The habitat is freezing because of the heater fault.'); }
+  if (h === 0 && S.res.o2 > 15 && S.res.water > 8 && S.res.food > 8) { h = 5; lines.push('You slept well and recovered a little health.'); }
+  S.res.health = clamp(S.res.health + h, 0, 100);
+  if (lines.length) setWhy(h >= 0, h >= 0 ? 'A good night' : 'A rough night', lines.join(' '), 'hrp');
+
+  if (S.storm > 0) S.storm--;
+  S.flare = false; S.tended = false; S.reported = false; S.forecast = [];
+
+  if (S.res.o2 <= 0) return fail('The oxygen supply ran out.');
+  if (S.res.health <= 0) return fail('Your health collapsed.');
+
+  S.day++;
+  if (S.day > W.maxDay) return win();
+  S.hour = DAY_START; S.zone = 'in'; S.suit = 100; S.warnedSuit = false;
+  P.x = 2320; P.dir = -1; P.target = null;
+
+  const evs = [];
+  S.schedule.forEach(it => {
+    if (it.fired || it.day !== S.day) return;
+    it.fired = true;
+    const ev = EVENTS[it.id];
+    const msg = ev.apply() || evText(ev);
+    S.happened.push(it.id);
+    evs.push({ title: ev.title, msg });
+    addLog('Alert: ' + ev.title + '. ' + msg);
+    setWhy(false, ev.title, ev.lesson, EVENT_SRC[it.id]);
+  });
+  dirty = true; panelSig = '';
+  showBriefing(before, lines, evs);
+}
+
+function showBriefing(before, notes, evs) {
+  const left = W.maxDay - S.day + 1, unit = W.dayName.toLowerCase();
+  let h = '<p class="lead">' + left + ' ' + unit + (left > 1 ? 's' : '') + (W.id === 'mars' ? ' until rescue.' : ' until sunrise.') + '</p>';
+  h += '<div class="deltas">' + Object.keys(LABELS).map(k => {
+    const a = Math.round(before[k]), b = Math.round(S.res[k]), dd = b - a;
+    return '<div><span>' + LABELS[k] + '</span><b class="' + (dd < 0 ? 'neg' : dd > 0 ? 'pos' : '') + '">' + a + '% to ' + b + '%</b></div>';
+  }).join('') + '</div>';
+  notes.forEach(n => { h += '<p class="note">' + n + '</p>'; });
+  evs.forEach(e => { h += '<div class="evt"><b>Alert: ' + e.title + '</b><p>' + e.msg + '</p></div>'; });
+  modal(W.dayName + ' ' + S.day + ' begins', h, [['Start the day', () => { closeModal(); Sfx.click(); say(suggest().t); }]]);
+  if (evs.length) { Sfx.alarm(); flash(); }
+}
+
+function win() {
+  Sfx.win();
+  debrief(true, W.id === 'mars' ? 'The rescue ship has arrived. You kept the outpost alive for ' + W.maxDay + ' sols.' : 'Sunrise. Solar power is back and the relief crew is on approach. You kept the outpost alive through the whole night.');
+}
+function fail(reason) {
+  if (S.over) return;
+  Sfx.lose(); debrief(false, reason);
+}
+function debrief(won, reason) {
+  S.over = true; dirty = true;
+  const id = S.scen, r = S.res;
+  const avg = (r.o2 + r.water + r.food + r.power) / 4;
+  const score = Math.round(clamp(avg * 0.35 + r.health * 0.3 + 25 + S.stats.right * 2 - S.stats.wrong * 2, 0, 100));
+  const rank = !won ? 'Mission lost' : score >= 80 ? 'Flight ready' : score >= 60 ? 'Mission qualified' : 'Survived, needs more training';
+  const lessons = Array.from(new Set(S.happened)).map(k => '<li><b>' + EVENTS[k].title + ':</b> ' + EVENTS[k].lesson + ' <span class="muted">(' + SOURCES[EVENT_SRC[k]].short + ')</span></li>').join('');
+  let h = '<p class="lead">' + reason + '</p>';
+  if (won) h += '<p class="score"><b>' + score + '</b> / 100 <span>' + rank + '</span></p>';
+  h += '<div class="deltas">' + Object.keys(LABELS).map(k => '<div><span>' + LABELS[k] + '</span><b>' + Math.round(r[k]) + '%</b></div>').join('') + '</div>';
+  h += '<p class="note">Tasks done: ' + S.stats.tasks + '. Trips outside: ' + S.stats.eva + '. Safety checks right: ' + S.stats.right + ', wrong: ' + S.stats.wrong + '.</p>';
+  if (lessons) h += '<h3>What you faced and what it teaches</h3><ul class="plain">' + lessons + '</ul>';
+  else h += '<p class="note">No alerts happened before the end. Try again for a bigger challenge.</p>';
+  modal(won ? 'Mission complete' : 'Mission lost', h, [
+    ['Play again', () => { closeModal(); startGame(id); }],
+    ['Main menu', () => { closeModal(); toMenu(); }, 'ghost']
+  ]);
+}
+
+/* ---------- tasks ---------- */
+function nearStation() {
+  let best = null, bd = 1e9;
+  STATIONS.forEach(st => {
+    if (st.zone !== S.zone) return;
+    const d = Math.abs(st.x - P.x);
+    if (d < 64 && d < bd) { best = st; bd = d; }
+  });
+  return best;
+}
+function currentTasks() { const st = nearStation(); return st ? tasksFor(st) : []; }
+
+function startTask(task) {
+  if (!S || S.over || modalOpen || P.working) return;
+  if (task.off) { toast(task.off); Sfx.error(); setWhy(false, 'Not possible right now', task.off, TASK_SRC[task.key]); return; }
+  const go = () => { if (task.check && !S.checked[task.key]) askCheck(task); else runTask(task, 0); };
+  if (task.confirm) {
+    modal('Are you sure?', '<p>' + task.confirm + '</p>', [
+      ['Yes, continue', () => { closeModal(); go(); }],
+      ['Not yet', closeModal, 'ghost']
+    ]);
+  } else go();
+}
+function askCheck(task) {
+  const c = task.check, opts = shuffle(c.opts.map((o, i) => ({ o, i })));
+  Sfx.click();
+  modal('Safety check', '<p class="q">' + c.q + '</p>', opts.map(x => [x.o, () => {
+    if (x.i === c.ans) {
+      S.checked[task.key] = true; S.stats.right++; Sfx.good(); closeModal();
+      say('Good call. ' + c.explain); S.lastExplain = c.explain; S.lastMiss = false; runTask(task, 0);
+    } else {
+      S.stats.wrong++; S.lastExplain = c.explain; S.lastMiss = true; setWhy(false, 'Safety step missed', c.explain, TASK_SRC[task.key]); Sfx.error(); S.res.health = clamp(S.res.health - 3, 0, 100);
+      modal('Not quite', '<p>' + c.explain + '</p><p class="note">You lose 30 minutes and a little health while you sort it out. You will be asked again next time.</p>',
+        [['Continue', () => { closeModal(); runTask(task, 0.5); }]]);
+    }
+  }, 'choice']));
+}
+function runTask(task, extra) {
+  P.task = task; P.extra = extra; P.target = null; P.walking = false;
+  if (task.instant) { finishTask(); return; }
+  P.working = true; P.workT = 0; P.workDur = clamp(task.hours * 0.6, 0.8, 2.2);
+  $('workLabel').textContent = task.label; $('workFill').style.width = '0%'; $('work').hidden = false;
+  Sfx.work(P.workDur);
+}
+function finishTask() {
+  const task = P.task, extra = P.extra;
+  P.working = false; P.task = null; $('work').hidden = true;
+  const msg = task.run();
+  S.stats.tasks++;
+  if (msg) { say(msg); addLog(msg); }
+  setWhy(!S.lastMiss, S.lastMiss ? task.label + ' done, but with a safety mistake' : task.label + ' worked',
+    [S.lastExplain, task.why || 'Steady routine work keeps the outpost safe.'].filter(Boolean).join(' '), TASK_SRC[task.key]);
+  S.lastExplain = ''; S.lastMiss = false;
+  if (!task.instant) Sfx.done();
+  advance(task.hours + extra);
+  dirty = true; panelSig = '';
+}
+
+/* ---------- hints and alerts ---------- */
+function stationAlert(id) {
+  const sy = S.sys;
+  switch (id) {
+    case 'solar': return (W.id === 'mars' && sy.dust > 35) || sy.panel < 70;
+    case 'antenna': return !sy.comms;
+    case 'airlock': return W.id === 'moon' && sy.seal < 50;
+    case 'life': return sy.scrub < 40 || sy.waterLeak || sy.hullLeak || sy.reclaim < 45 || sy.heaterFault;
+    case 'farm': return sy.growth >= 100 || !sy.pump || !S.tended;
+    case 'command': return !S.reported && sy.comms;
+    default: return false;
+  }
+}
+function suggest() {
+  const sy = S.sys, mars = W.id === 'mars', out = S.zone === 'out';
+  if (out && S.suit < 35) return { t: 'Suit air is low. Walk back to the airlock now.', st: 'airlock' };
+  if (S.flare) return { t: 'Solar flare today. Stay inside and do indoor jobs.', st: 'life' };
+  if (sy.hullLeak) return { t: 'Air is leaking from the hull. Patch it at Life Support.', st: 'life' };
+  if (sy.waterLeak) return { t: 'Water is leaking. Seal it at Life Support.', st: 'life' };
+  if (sy.heaterFault) return { t: 'The heater tripped. Reset it at Life Support.', st: 'life' };
+  if (!sy.comms) return { t: 'No signal. Go outside and realign the antenna.', st: 'antenna' };
+  if (sy.scrub < 40) return { t: 'The CO2 filter is almost full. Swap it at Life Support.', st: 'life' };
+  if (!S.reported) return { t: 'Call Mission Control in the Command Room for the forecast.', st: 'command' };
+  if (mars && sy.dust > 35) return { t: 'Dust is cutting solar power. Clean the panels outside.', st: 'solar' };
+  if (sy.panel < 70) return { t: mars ? 'The solar array is damaged. Repair it outside.' : 'The power controller has a fault. Reset it outside.', st: 'solar' };
+  if (!sy.pump) return { t: 'The irrigation pump is down. Restart it in the ' + stName('farm') + '.', st: 'farm' };
+  if (sy.growth >= 100) return { t: 'The crops are ready. Harvest them.', st: 'farm' };
+  if (!S.tended) return { t: 'Tend the crops so they keep growing.', st: 'farm' };
+  if (sy.reclaim < 50) return { t: 'The water reclaimer is wearing down. Service it.', st: 'life' };
+  if (W.id === 'moon' && sy.seal < 50) return { t: 'Your suit seals are dusty. Brush them at the airlock.', st: 'airlock' };
+  if (S.hour >= DAY_END - 2) return { t: 'It is getting late. Return inside and sleep.', st: 'quarters' };
+  if (mars && S.res.water < 40) return { t: 'Water is getting low. A trip to the ice deposit would help.', st: 'rover' };
+  if (!mars && S.pods > 0) return { t: 'Supply pods are waiting outside. A trip would add water, food and oxygen.', st: 'rover' };
+  return { t: 'Everything is stable. Get ahead on chores, or sleep to end the day.', st: 'quarters' };
+}
+
+/* ---------- interface ---------- */
+function buildMeters() {
+  $('meters').innerHTML = METERS.map(([k, l]) =>
+    '<div class="meter" id="m-' + k + '"><div class="mrow"><span>' + l + '</span><b id="v-' + k + '"></b></div><div class="bar"><i id="b-' + k + '"></i></div><small id="s-' + k + '"></small></div>').join('');
+}
+function buildMini() {
+  const m = $('mini');
+  m.innerHTML = '<div class="hab"></div>' + STATIONS.map(st => '<span class="dot ' + st.zone + '" style="left:' + (st.x / WORLD_W * 100) + '%" title="' + stName(st.id) + '"></span>').join('') + '<span id="me" class="me"></span>';
+  m.querySelector('.hab').style.left = (1000 / WORLD_W * 100) + '%';
+}
+function updateMeters() {
+  const d = calcDeltas(true), unit = W.dayName.toLowerCase(), need = W.maxDay - S.day + 1;
+  METERS.forEach(([k, , col]) => {
+    const el = $('m-' + k);
+    if (k === 'suit') { el.hidden = S.zone !== 'out'; if (el.hidden) return; }
+    const v = k === 'suit' ? S.suit : S.res[k];
+    $('v-' + k).textContent = Math.round(v) + '%';
+    const b = $('b-' + k);
+    b.style.width = clamp(v, 0, 100) + '%';
+    b.style.background = v < 25 ? '#ff6b6b' : v < 45 ? '#ffcf5a' : col;
+    let sub = '';
+    if (k === 'o2' || k === 'water' || k === 'food') {
+      const dd = d[k], left = dd < -0.05 ? v / -dd : 999;
+      sub = left >= need ? 'enough for now' : left.toFixed(1) + ' ' + unit + 's left';
+    } else if (k === 'power') {
+      sub = d.power >= 0 ? 'charging' : (v / -d.power >= need ? 'enough for now' : (v / -d.power).toFixed(1) + ' ' + unit + 's left');
+    } else if (k === 'health') sub = v >= 80 ? 'good' : v >= 50 ? 'hurt' : 'critical';
+    else sub = (S.suit / suitRate()).toFixed(1) + ' hours of air';
+    $('s-' + k).textContent = sub;
+  });
+}
+function chipList() {
+  const sy = S.sys, mars = W.id === 'mars', c = [];
+  const lv = (v, w, b) => v < b ? 'bad' : v < w ? 'warn' : 'ok';
+  if (mars) c.push(['Panel dust', Math.round(sy.dust) + '%', sy.dust > 50 ? 'bad' : sy.dust > 30 ? 'warn' : 'ok']);
+  c.push([mars ? 'Panel health' : 'Power controller', Math.round(sy.panel) + '%', lv(sy.panel, 80, 50)]);
+  c.push(['Comms', sy.comms ? 'Online' : 'Down', sy.comms ? 'ok' : 'bad']);
+  c.push(['CO2 filter', Math.round(sy.scrub) + '%', lv(sy.scrub, 50, 30)]);
+  c.push(['Water reclaimer', Math.round(sy.reclaim) + '%', lv(sy.reclaim, 60, 35)]);
+  c.push(['Crops', Math.round(sy.growth) + '%' + (sy.pump ? '' : ' (pump down)'), sy.pump ? 'ok' : 'bad']);
+  c.push(['Leaks', sy.hullLeak && sy.waterLeak ? 'Air and water' : sy.hullLeak ? 'Air' : sy.waterLeak ? 'Water' : 'None', (sy.hullLeak || sy.waterLeak) ? 'bad' : 'ok']);
+  c.push(['Power mode', S.saver ? 'Saver' : 'Normal', 'ok']);
+  if (mars) c.push(['Weather', S.storm > 0 ? 'Storm (' + S.storm + ' left)' : S.flare ? 'Solar flare' : 'Clear', (S.storm > 0 || S.flare) ? 'warn' : 'ok']);
+  else {
+    c.push(['Heater', sy.heaterFault ? 'Fault' : 'OK', sy.heaterFault ? 'bad' : 'ok']);
+    c.push(['Suit seals', Math.round(sy.seal) + '%', lv(sy.seal, 70, 45)]);
+    c.push(['Radiation', S.flare ? 'Solar flare' : 'Normal', S.flare ? 'warn' : 'ok']);
+    c.push(['Supply pods', String(S.pods), 'ok']);
+  }
+  return c;
+}
+function renderPanel() {
+  const st = nearStation(), box = $('tasks');
+  let list = [], title = 'No station nearby';
+  if (st) { list = tasksFor(st); title = stName(st.id); }
+  $('stTitle').textContent = title;
+  const first = list.find(x => !x.off) || list[0];
+  $('prompt').hidden = !first || P.working;
+  if (first) $('prompt').innerHTML = '<b>E</b> ' + first.label;
+  const sig = title + '|' + S.zone + '|' + list.map(x => x.key + x.label + x.desc + (x.off || '')).join('~') + '|' + (P.working ? 1 : 0);
+  if (sig === panelSig) return;
+  panelSig = sig; panelTasks = list;
+  if (!st) { box.innerHTML = '<p class="muted">Walk to a glowing pad on the ground. Tasks for that station show up here. Walking costs game time.</p>'; return; }
+  box.innerHTML = '';
+  list.forEach((tk, i) => {
+    const b = document.createElement('button');
+    b.className = 'task' + (tk.off ? ' off' : '');
+    b.innerHTML = '<span class="k">' + (i + 1) + '</span><span class="tt"><b>' + tk.label + '</b><em>' + tk.desc + '</em><small>' + (tk.off ? tk.off : 'Time: ' + tk.hours + ' h') + '</small></span>';
+    b.onclick = () => { b.blur(); startTask(tk); };
+    box.appendChild(b);
+  });
+}
+function ui() {
+  if (!S) return;
+  const sg = suggest();
+  S.hl = STATIONS.some(s => s.id === sg.st && s.zone === S.zone) ? sg.st : 'airlock';
+  $('sbDay').textContent = W.dayName + ' ' + S.day + ' of ' + W.maxDay;
+  const left = W.maxDay - S.day + 1;
+  $('sbLeft').textContent = left + (W.id === 'mars' ? (left > 1 ? ' sols until rescue' : ' sol until rescue') : (left > 1 ? ' days until sunrise' : ' day until sunrise'));
+  $('clockTxt').textContent = fmtTime(S.hour);
+  const cf = $('clockFill'); cf.style.width = clamp((S.hour - DAY_START) / (DAY_END - DAY_START) * 100, 0, 100) + '%';
+  cf.style.background = S.hour >= 20 ? '#ff8a6a' : '';
+  const zb = $('zoneBadge'); zb.textContent = S.zone === 'out' ? 'Outside (EVA)' : 'Inside'; zb.className = 'badge ' + (S.zone === 'out' ? 'eva' : '');
+  updateMeters();
+  $('objective').textContent = sg.t;
+  $('chips').innerHTML = chipList().map(([l, v, s]) => '<div class="chip"><span>' + l + '</span><b class="' + s + '">' + v + '</b></div>').join('');
+  $('forecast').textContent = S.forecast.length ? S.forecast.join(' ') : 'No forecast yet. Call Mission Control.';
+  $('log').innerHTML = S.log.slice(0, 8).map(e => '<div><span>' + W.dayName[0] + e.d + ' ' + fmtTime(e.h) + '</span> ' + e.m + '</div>').join('');
+  renderPanel();
+  Sfx.scene(S.zone, S.storm > 0, W.id, S.res.power > 0);
+}
+function frameUi() {
+  if (P.working) $('workFill').style.width = Math.min(100, P.workT / P.workDur * 100) + '%';
+  const me = $('me'); if (me) me.style.left = (P.x / WORLD_W * 100) + '%';
+}
+
+/* ---------- update and input ---------- */
+function update(dt) {
+  if (S.over || modalOpen) { P.walking = false; return; }
+  if (P.working) {
+    P.workT += dt;
+    if (P.workT >= P.workDur) finishTask();
+    return;
+  }
+  let dir = 0;
+  if (keys.left) dir -= 1;
+  if (keys.right) dir += 1;
+  if (dir === 0 && P.target !== null) {
+    const dx = P.target - P.x;
+    if (Math.abs(dx) < 6) P.target = null; else dir = Math.sign(dx);
+  } else if (dir !== 0) P.target = null;
+  P.walking = dir !== 0;
+  if (dir) {
+    const range = S.zone === 'out' ? [60, 980] : [1040, 2440];
+    const nx = clamp(P.x + dir * SPEED * dt * ((S.storm > 0 && S.zone === 'out') ? 0.8 : 1), range[0], range[1]);
+    const moved = Math.abs(nx - P.x);
+    P.x = nx; P.dir = dir; P.phase += moved * 0.06; P.stepDist += moved;
+    if (moved === 0) { P.target = null; P.walking = false; }
+    if (P.stepDist > 42) { P.stepDist = 0; Sfx.step(S.zone); }
+    advance(moved / PX_PER_HOUR);
+  }
+}
+
+function interact() {
+  if (!S) return;
+  const tl = currentTasks(), tk = tl.find(x => !x.off) || tl[0];
+  if (tk) startTask(tk);
+}
+addEventListener('keydown', e => {
+  if (!S || modalOpen) return;
+  const k = e.key.toLowerCase();
+  if (k === 'a' || k === 'arrowleft') { keys.left = true; e.preventDefault(); }
+  else if (k === 'd' || k === 'arrowright') { keys.right = true; e.preventDefault(); }
+  else if (k === 'e' || k === ' ' || k === 'enter') { e.preventDefault(); if (!e.repeat) interact(); }
+  else if (k >= '1' && k <= '6') { const tk = currentTasks()[+k - 1]; if (tk) startTask(tk); }
+});
+addEventListener('keyup', e => {
+  const k = e.key.toLowerCase();
+  if (k === 'a' || k === 'arrowleft') keys.left = false;
+  if (k === 'd' || k === 'arrowright') keys.right = false;
+});
+addEventListener('blur', () => { keys.left = keys.right = false; });
+cv.addEventListener('pointerdown', e => {
+  if (!S || modalOpen || P.working) return;
+  const r = cv.getBoundingClientRect(), cam = clamp(P.x - VW / 2, 0, WORLD_W - VW);
+  P.target = cam + (e.clientX - r.left) / r.width * VW;
+});
+[['tl', 'left'], ['tr', 'right']].forEach(([id, k]) => {
+  const el = $(id);
+  el.addEventListener('pointerdown', e => { e.preventDefault(); keys[k] = true; });
+  ['pointerup', 'pointerleave', 'pointercancel'].forEach(ev => el.addEventListener(ev, () => { keys[k] = false; }));
+});
+$('te').addEventListener('click', interact);
+
+function buildMenu() {
+  $('cards').innerHTML = Object.keys(SCENARIOS).map(id => {
+    const s = SCENARIOS[id];
+    return '<article class="card ' + s.world + '"><div class="art" aria-hidden="true"><i></i></div><div class="card-body"><span class="tag">' + s.tag + '</span><h2>' + s.title + '</h2><p>' + s.blurb +
+      '</p><ul class="facts">' + s.facts.map(f => '<li>' + f + '</li>').join('') + '</ul><button class="primary" data-sc="' + id + '">Start mission</button></div></article>';
+  }).join('');
+  document.querySelectorAll('[data-sc]').forEach(b => b.addEventListener('click', () => startGame(b.dataset.sc)));
+}
+buildMenu();
+$('btnWhy').addEventListener('click', showWhy);
+$('btnSrc').addEventListener('click', showSources);
+addEventListener('pointerdown', () => Sfx.init(), { once: true });
+$('btnMenu').addEventListener('click', () => toMenu());
+$('btnRestart').addEventListener('click', () => { if (S) startGame(S.scen); });
+$('btnSound').addEventListener('click', () => {
+  Sfx.init(); Sfx.setSound(!Sfx.on); $('btnSound').textContent = 'Sound: ' + (Sfx.on ? 'on' : 'off');
+});
+$('btnMusic').addEventListener('click', () => {
+  Sfx.init(); Sfx.setMusic(!Sfx.musicOn); $('btnMusic').textContent = 'Music: ' + (Sfx.musicOn ? 'on' : 'off');
+});
+$('btnHelp').addEventListener('click', () => {
+  if (modalOpen) return;
+  modal('How to play',
+    '<p>You are alone at an outpost. Stay alive until the rescue or sunrise.</p>' +
+    '<ul class="plain"><li><b>Move:</b> A and D, arrow keys, or click the ground.</li><li><b>Work:</b> stand on a glowing pad. Press E for the first task, or press 1 to 4.</li>' +
+    '<li><b>Time:</b> walking, suiting up and every task use hours. The day ends at ' + fmtTime(DAY_END) + '.</li>' +
+    '<li><b>Outside:</b> suit air drops every hour. Go back to the airlock before it runs out.</li>' +
+    '<li><b>Sleep:</b> use the bed in Crew Quarters to end the day. Systems wear down overnight.</li>' +
+    '<li><b>Alerts:</b> a red ! shows where something needs attention. The gold ring is the suggested next stop.</li></ul>',
+    [['Close', closeModal]]);
+});
+
+let last = 0;
+function loop(ts) {
+  const dt = Math.min(0.05, (ts - last) / 1000 || 0); last = ts;
+  if (S && !$('game').hidden) {
+    update(dt);
+    if (S) {
+      draw(ts);
+      if (dirty && ts - lastUi > 120) { ui(); lastUi = ts; dirty = false; }
+      frameUi();
+    }
+  }
+  requestAnimationFrame(loop);
+}
+requestAnimationFrame(loop);
+
+</script>
+</body>
+</html>

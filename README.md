@@ -1,14 +1,14 @@
-# Outpost Zero
+# Odyssey Outpost
 
 **A 2D survival trainer for junior astronauts. Alone on the Moon or Mars for two weeks, can you keep the outpost alive?**
 
-Built for the **NASA Space Apps Challenge 2026**.
+Built by team **Cosmic Odyssey** for the **NASA Space Apps Challenge 2026**.
 
 | | |
 |---|---|
-| **Live game** | 👉 **[https://sino-cant-code.github.io/Outpost-Zero-NASA-Space-App-Challange-2026/]** |
-| **Challenge** | [Build a Junior Astronaut Mission Trainer] |
-| **Team** | [Cosmic Odyssey] |
+| **Live game** | 👉 **[PASTE YOUR DEPLOYED LINK HERE]** (example: `https://YOUR-USERNAME.github.io/YOUR-REPO-NAME/`) |
+| **Challenge** | [PASTE CHALLENGE NAME HERE] |
+| **Team** | [TEAM NAME / MEMBERS] |
 | **Video demo** | [OPTIONAL: PASTE LINK HERE] |
 
 ---
@@ -36,7 +36,7 @@ Screenshots taken from the game itself.
 
 ## The idea
 
-Future astronauts must stay calm and make safe choices when things go wrong. Outpost Zero lets young learners practise that. Every job costs time, every choice has a result, and after each result the game explains **why**.
+Future astronauts must stay calm and make safe choices when things go wrong. Odyssey Outpost lets young learners practise that. Every job costs time, every choice has a result, and after each result the game explains **why**.
 
 ## Features
 
@@ -86,7 +86,18 @@ Facts in the game are simplified from public NASA information. The game does not
 
 The in-game **NASA sources** button shows the same list.
 
-*Outpost Zero is an educational project. It is not an official NASA product and not real mission guidance. Values are simplified for play.*
+*Odyssey Outpost is an educational project. It is not an official NASA product and not real mission guidance. Values are simplified for play.*
+
+## Run it
+
+Open `index.html` in a browser, or use the VS Code **Live Server** extension. Click once so the browser allows sound.
+`outpost-zero-single.html` is the same game in one file.
+
+## Deploy (GitHub Pages)
+
+1. Push this folder to a GitHub repository.
+2. Go to **Settings > Pages**, choose **Deploy from a branch**, branch `main`, folder `/ (root)`.
+3. Wait a minute, then copy your link into the **Live game** row at the top.
 
 ## Project files
 
@@ -101,6 +112,7 @@ js/game.js     rules, interface, main loop
 docs/screenshots/   your screenshots
 ```
 
+Make it easier or harder by editing `WORLDS` and `SCENARIOS` in `js/data.js`.
 
 ## Built with
 
